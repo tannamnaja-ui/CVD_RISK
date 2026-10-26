@@ -4633,3 +4633,18 @@ p {
   font-weight: 700;
   white-space: nowrap;
 }
+
+/* thin vertical lines between the patient-list columns */
+.ptable th,
+.ptable td {
+  border-right: 1px solid #e3ecea;
+}
+
+.ptable th {
+  border-right-color: #c9ddd9;
+}
+
+.ptable th:last-child,
+.ptable td:last-child {
+  border-right: 0;
+}
