@@ -197,7 +197,7 @@ export function PatientListPage() {
     }
     const headers = [
       'คัดกรอง CVD', 'ผลการประเมิน', 'วันที่มา', 'HN', 'ชื่อ - สกุล',
-      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว', 'ส่วนสูง', 'สูบบุหรี่', 'เบาหวาน', 'อายุ', 'เพศ', 'ความดัน',
+      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว', 'ส่วนสูง', 'สูบบุหรี่', 'เบาหวาน', 'อายุ(ปี)', 'เพศ', 'ความดัน',
       'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'รายละเอียด DiagText', 'แผนก', 'ห้องตรวจ', 'สิทธิ',
     ];
     const val = (v?: { value: number }) => (v ? Math.round(v.value * 10) / 10 : '');
@@ -397,7 +397,7 @@ export function PatientListPage() {
                 <SortTh k="height" sort={sort} onSort={sortBy}><span className="th-nowrap">ส่วนสูง</span></SortTh>
                 <SortTh k="smoke" sort={sort} onSort={sortBy}><span className="th-nowrap">สูบบุหรี่</span></SortTh>
                 <SortTh k="dm" sort={sort} onSort={sortBy}><span className="th-nowrap">เบาหวาน</span></SortTh>
-                <SortTh k="age" sort={sort} onSort={sortBy}>อายุ</SortTh>
+                <SortTh k="age" sort={sort} onSort={sortBy}><span className="th-nowrap">อายุ(ปี)</span></SortTh>
                 <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ</SortTh>
                 <SortTh k="sbp" sort={sort} onSort={sortBy}><span className="th-nowrap">ความดัน</span></SortTh>
                 <SortTh k="risk" sort={sort} onSort={sortBy}><span className="th-nowrap">ปัจจัยเสี่ยง</span></SortTh>
