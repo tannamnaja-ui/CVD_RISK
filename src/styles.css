@@ -4586,3 +4586,27 @@ p {
   white-space: pre-wrap;
   overflow-x: auto;
 }
+
+/* "ประเมินแล้ว" status in the follow-up lists */
+.assessed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border: 1px solid #9fd8b4;
+  border-radius: 999px;
+  background: #e8f7ee;
+  color: #1e6b3a;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.assessed-badge--button {
+  cursor: pointer;
+}
+
+.assessed-badge--button:hover {
+  background: #d3f0de;
+}

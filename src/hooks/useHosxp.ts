@@ -4,6 +4,7 @@ import type { PatientRow, RiskRow } from '../lib/hosxp/patients';
 import { LIST_QUERY_VARIANTS, cvdHistorySql, diabetesSql, hospitalSql, labLinkSql, smokingSql, patientNamesSql, patientsSql, riskFactorsSql, vitalsHistorySql, type Dialect } from '../lib/hosxp/sql';
 import type { VitalsRow } from '../lib/hosxp/vitals';
 import type { DiabetesRow } from '../lib/hosxp/diabetes';
+import { buildFollowUp, followUpContactsSql, withContacts, type FollowUp } from '../lib/followUp';
 import { dataMode } from '../services/dataMode';
 import { serverCall } from '../services/directAuth';
 
@@ -180,6 +181,25 @@ export function useHosxp() {
     [api, dialect, mode, query],
   );
 
+  /**
+   * Follow-up worklists. Direct mode: from the data server, names included. BMS mode: built here from
+   * BMS API queries without protected fields — names come from followUpContacts after approval.
+   */
+  const followUp = useCallback(async (): Promise<FollowUp> => {
+    if (mode === 'direct') return api<FollowUp>('/api/follow-up');
+    const d = await dialect();
+    return buildFollowUp({ dialect: d, query: (sql) => query(sql) });
+  }, [api, dialect, mode, query]);
+
+  /** BMS mode: names / phones / addresses for the worklists; throws PrivacyBlockedError until approved in HOSxP. */
+  const followUpContacts = useCallback(
+    async (f: FollowUp, retry?: { sql: string; requestId: string }): Promise<FollowUp> => {
+      const sql = retry?.sql ?? followUpContactsSql(await dialect());
+      return withContacts(f, await query(sql, retry?.requestId));
+    },
+    [dialect, query],
+  );
+
   /** Every Thai CV Risk result saved for the patient of this visit, oldest first. */
   const cvdHistory = useCallback(
     async (vn: string): Promise<CvdHistoryRow[]> => {
@@ -215,5 +235,5 @@ export function useHosxp() {
     }
   }, [connectionConfig, mode, query]);
 
-  return { mode, hospitalName, listPatients, loadNames, loadRiskFactors, vitals, labs, smoking, diabetes, cvdHistory, diagnose };
+  return { mode, hospitalName, listPatients, loadNames, loadRiskFactors, vitals, labs, smoking, diabetes, followUp, followUpContacts, cvdHistory, diagnose };
 }

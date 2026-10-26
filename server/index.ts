@@ -15,7 +15,7 @@
 import path from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { cvdHistorySql, diabetesSql, hospitalSql, labLinkSql, smokingSql, patientNamesSql, patientsSql, riskFactorsSql, vitalsHistorySql } from '../src/lib/hosxp/sql';
-import { buildFollowUp } from './followUp';
+import { buildFollowUp, followUpContactsSql, withContacts } from '../src/lib/followUp';
 import { getUser, login, logout, requireLogin } from './auth';
 import { getCvdScreen, saveCvdScreen, type CvdScreenInput } from './cvdScreen';
 import { buildReport } from './report';
@@ -242,7 +242,12 @@ app.get(
 // follow-up worklists (contain names and phone numbers — signed-in users of this PC only)
 app.get(
   '/api/follow-up',
-  handle(async () => buildFollowUp(await getDb())),
+  handle(async () => {
+    const d = await getDb();
+    // direct database: names / phones / addresses straight away (BMS mode loads them after approval)
+    const [lists, contacts] = await Promise.all([buildFollowUp(d), d.query(followUpContactsSql(d.dialect))]);
+    return withContacts(lists, contacts);
+  }),
 );
 
 // ---------- save Thai CV Risk to opdscreen_cvd (the only write in this app) ----------

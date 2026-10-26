@@ -9,7 +9,7 @@
  */
 import { APPOINTMENT_GRACE_DAYS, appointmentKept, isJudgeable, type Appointment } from '../src/lib/appointments';
 import { comorbiditiesOf, inScreeningAge, riskFactorsOf, todayLocal, type PatientRow, type RiskRow } from '../src/lib/hosxp/patients';
-import { riskFactorsSql, sqlDate } from '../src/lib/hosxp/sql';
+import { TAMBON_JOIN, riskFactorsSql, sqlDate } from '../src/lib/hosxp/sql';
 import type { Db } from './db';
 
 const DAY = 86_400_000;
@@ -34,10 +34,6 @@ const AGE_GROUPS = [
   { label: '65+', min: 65, max: 200 },
 ];
 const ageGroup = (age: number | null) => (age === null ? null : (AGE_GROUPS.find((g) => age >= g.min && age <= g.max)?.label ?? null));
-
-/** Thai address of the patient's tambon (thaiaddress.codetype 3 = tambon). */
-export const TAMBON_JOIN = `left outer join thaiaddress ta on ta.codetype='3' and ta.chwpart=p.chwpart and ta.amppart=p.amppart and ta.tmbpart=p.tmbpart
-  left outer join thaiaddress tamp on tamp.codetype='2' and tamp.chwpart=p.chwpart and tamp.amppart=p.amppart`;
 
 /** Screenings saved in opdscreen_cvd whose visit falls in the period. */
 const screeningsInRange = (from: string, to: string) => `

@@ -250,3 +250,7 @@ export const cvdHistorySql = (vn: string) => `
     left outer join cvd_risk_score_type ct on ct.cvd_risk_score_type_id = c.cvd_risk_score_type_id
     WHERE ${samePatient(vn)}
     ORDER BY o.vstdate, c.screen_datetime`;
+
+/** Thai address of the patient's tambon and amphoe (thaiaddress.codetype 3 = tambon, 2 = amphoe); needs patient p. */
+export const TAMBON_JOIN = `left outer join thaiaddress ta on ta.codetype='3' and ta.chwpart=p.chwpart and ta.amppart=p.amppart and ta.tmbpart=p.tmbpart
+  left outer join thaiaddress tamp on tamp.codetype='2' and tamp.chwpart=p.chwpart and tamp.amppart=p.amppart`;

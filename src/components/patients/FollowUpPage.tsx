@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { FollowUp, FollowUpListId, FollowUpRow } from '../../../server/followUp';
+import { PrivacyBlockedError, useHosxp } from '../../hooks/useHosxp';
 import { navigate } from '../../hooks/useHashRoute';
 import { exportSheet } from '../../lib/excel';
+import type { FollowUp, FollowUpListId, FollowUpRow } from '../../lib/followUp';
 import { CVD_LEVEL_COLORS, type PatientRow } from '../../lib/hosxp/patients';
 import { thaiDate } from '../../lib/hosxp/vitals';
-import { dataMode } from '../../services/dataMode';
-import { serverCall } from '../../services/directAuth';
-import { AlertTriangleIcon, EraserIcon, FilterIcon, InfoIcon, ResetIcon, SheetIcon } from '../Icons';
+import { AlertTriangleIcon, CheckIcon, EraserIcon, FilterIcon, InfoIcon, KeyIcon, ResetIcon, SheetIcon } from '../Icons';
 import { Modal } from '../Modal';
 import { CvdHistory } from './CvdHistory';
 import { SELECTED_PATIENT_KEY } from './PatientListPage';
 
 const TABS: { id: FollowUpListId; label: string; reason: string; rule: (r: FollowUp['rules']) => string }[] = [
+  {
+    id: 'assessed',
+    label: 'ประเมินแล้วทั้งหมด',
+    reason: 'สถานะ',
+    rule: () => 'ทุกคนที่มีผล Thai CV Risk บันทึกไว้ (opdscreen_cvd) — แสดงผลครั้งล่าสุด เรียงจากประเมินล่าสุด',
+  },
   {
     id: 'noStatin',
     label: 'เสี่ยงสูง ยังไม่ได้ statin',
@@ -41,30 +46,53 @@ const TABS: { id: FollowUpListId; label: string; reason: string; rule: (r: Follo
 
 const sexLabel = (s: string) => (s === '1' ? 'ชาย' : s === '2' ? 'หญิง' : '–');
 
-/** Worklists of screened patients who need action (direct-database mode; rows identify patients). */
+/**
+ * Worklists of screened patients who need action. Direct mode: names straight away.
+ * Opened from HOSxP XE (BMS API): the lists first, names / phones / addresses after approval in HOSxP.
+ */
 export function FollowUpPage() {
+  const { mode, followUp, followUpContacts } = useHosxp();
   const [data, setData] = useState<FollowUp | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<FollowUpListId>('noStatin');
+  const [tab, setTab] = useState<FollowUpListId>('assessed');
   const [search, setSearch] = useState('');
   const [historyOf, setHistoryOf] = useState<FollowUpRow | null>(null);
+  /** BMS mode: contacts query blocked by the API privacy protection, waiting for approval in HOSxP */
+  const [approval, setApproval] = useState<{ requestId: string; sql: string; notYet?: boolean } | null>(null);
+  const [contactsLoading, setContactsLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setApproval(null);
     try {
-      setData(await serverCall<FollowUp>('/api/follow-up'));
+      setData(await followUp());
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [followUp]);
 
   useEffect(() => {
-    if (dataMode() === 'direct') void load();
+    void load();
   }, [load]);
+
+  /** BMS mode: names / phones / addresses — the API releases them after the request is approved in HOSxP. */
+  async function loadContacts(retry?: { sql: string; requestId: string }) {
+    if (!data) return;
+    setContactsLoading(true);
+    try {
+      setData(await followUpContacts(data, retry));
+      setApproval(null);
+    } catch (e) {
+      if (e instanceof PrivacyBlockedError) setApproval({ requestId: e.requestId, sql: e.sql, notYet: !!retry });
+      else setError((e as Error).message);
+    } finally {
+      setContactsLoading(false);
+    }
+  }
 
   const rows = useMemo(() => {
     const list = data?.lists[tab] ?? [];
@@ -73,17 +101,9 @@ export function FollowUpPage() {
     return list.filter((r) => words.every((w) => `${r.name} ${r.hn} ${r.address}`.toLowerCase().includes(w)));
   }, [data, tab, search]);
 
-  if (dataMode() !== 'direct') {
-    return (
-      <div className="plist">
-        <section className="plist__card">
-          <p className="ptable__empty">รายชื่อติดตามใช้ได้เมื่อเข้าใช้งานผ่านหน้าเข้าสู่ระบบของแอป (ไม่ใช่เปิดจาก HOSxP XE)</p>
-        </section>
-      </div>
-    );
-  }
-
   const current = TABS.find((t) => t.id === tab)!;
+  const hidden = mode === 'bms' && !data?.contactsLoaded;
+  const masked = (v: string) => v || (hidden ? <span className="no-dx">ซ่อนอยู่</span> : <span className="muted">–</span>);
 
   /** Open the assessment for the patient's visit today (assessments are saved per visit). */
   function assessToday(r: FollowUpRow) {
@@ -150,6 +170,17 @@ export function FollowUpPage() {
             <button type="button" className="pbtn pbtn--ghost" onClick={load} disabled={loading}>
               <ResetIcon size={16} /> โหลดใหม่
             </button>
+            {mode === 'bms' && (
+              <button
+                type="button"
+                className="pbtn pbtn--ghost"
+                onClick={() => loadContacts()}
+                disabled={!data || data.contactsLoaded || contactsLoading}
+                title="ชื่อ เบอร์โทร ที่อยู่ เป็นข้อมูลที่ต้องอนุมัติในโปรแกรม HOSxP ก่อนแสดง"
+              >
+                <KeyIcon size={16} /> {data?.contactsLoaded ? 'แสดงชื่อแล้ว' : contactsLoading ? 'กำลังขอข้อมูล...' : 'แสดงชื่อ/เบอร์โทร'}
+              </button>
+            )}
             <button type="button" className="pbtn pbtn--green" onClick={exportExcel}>
               <SheetIcon size={16} /> ส่งออก Excel
             </button>
@@ -159,7 +190,10 @@ export function FollowUpPage() {
           </div>
           {data && (
             <p className="followup-rule">
-              <InfoIcon size={16} /> <span>เกณฑ์: {current.rule(data.rules)} · ไม่รวมผู้เสียชีวิต · กดที่แถวเพื่อดูประวัติผลการประเมิน</span>
+              <InfoIcon size={16} />{' '}
+              <span>
+                เกณฑ์: {current.rule(data.rules)} · {data.contactsLoaded ? 'ไม่รวมผู้เสียชีวิต' : 'ยังไม่ได้ตัดผู้เสียชีวิตออก (ต้องแสดงชื่อก่อน)'} · กดที่แถวเพื่อดูประวัติผลการประเมิน
+              </span>
             </p>
           )}
         </div>
@@ -167,6 +201,21 @@ export function FollowUpPage() {
         {error && (
           <div className="privacy-banner">
             <AlertTriangleIcon size={18} /> <span>{error}</span>
+          </div>
+        )}
+        {approval && (
+          <div className="privacy-banner">
+            <KeyIcon size={18} />
+            <span>
+              ชื่อ เบอร์โทร และที่อยู่ เป็นข้อมูลส่วนบุคคลที่ต้องอนุมัติ — อนุมัติคำขอ <code>{approval.requestId}</code> ในโปรแกรม HOSxP แล้วกดปุ่มนี้
+              {approval.notYet && <b className="privacy-banner__warn"> (ยังไม่ได้รับการอนุมัติหรือหมดอายุ)</b>}
+            </span>
+            <button type="button" className="pbtn pbtn--primary" onClick={() => loadContacts({ sql: approval.sql, requestId: approval.requestId })} disabled={contactsLoading}>
+              อนุมัติแล้ว — แสดงชื่อ
+            </button>
+            <button type="button" className="pbtn pbtn--ghost" onClick={() => setApproval(null)}>
+              ปิด
+            </button>
           </div>
         )}
 
@@ -212,15 +261,27 @@ export function FollowUpPage() {
                         </span>
                       </td>
                       <td className="mono">{r.hn}</td>
-                      <td className="strong">{r.name}</td>
+                      <td className="strong">{masked(r.name)}</td>
                       <td className="center">{r.age ?? '–'}</td>
                       <td className="center">{sexLabel(r.sex)}</td>
-                      <td>{r.phone || <span className="muted">–</span>}</td>
-                      <td>{r.address || <span className="muted">–</span>}</td>
-                      <td>{r.reason}</td>
+                      <td>{masked(r.phone)}</td>
+                      <td>{masked(r.address)}</td>
+                      <td>
+                        {tab === 'assessed' ? (
+                          <span className="assessed-badge">
+                            <CheckIcon size={14} /> {r.reason}
+                          </span>
+                        ) : (
+                          r.reason
+                        )}
+                      </td>
                       <td>{thaiDate(r.lastVisit)}</td>
                       <td onClick={(e) => e.stopPropagation()}>
-                        {r.today ? (
+                        {r.assessedToday && r.today ? (
+                          <button type="button" className="assessed-badge assessed-badge--button" onClick={() => assessToday(r)} title="ประเมินแล้วใน visit วันนี้ — กดเพื่อเปิดดูหรือแก้ไข">
+                            <CheckIcon size={14} /> ประเมินแล้ว
+                          </button>
+                        ) : r.today ? (
                           <button type="button" className="pbtn pbtn--primary" onClick={() => assessToday(r)} title="เปิดหน้าประเมินของ visit วันนี้">
                             ประเมิน
                           </button>
