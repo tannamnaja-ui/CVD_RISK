@@ -1,4 +1,5 @@
 /** Patient-list helpers ported from public/js/patients.js (pure functions, no DOM). */
+import type { Clinical } from './clinical';
 
 export interface PatientRow {
   vstdate?: string;
@@ -25,6 +26,13 @@ export interface PatientRow {
   screened?: boolean;
   /** the saved result (opdscreen_cvd) */
   result?: CvdResult | null;
+  /** assessment inputs (TC, HDL, waist, height, smoking, diabetes, SBP) — same sources as the assessment page */
+  clinical?: Clinical;
+}
+
+/** Merge the assessment inputs (lib/hosxp/clinical.ts) into the rows. */
+export function applyClinical(patients: PatientRow[], byVn: Map<string, Clinical>): PatientRow[] {
+  return patients.map((p) => ({ ...p, clinical: byVn.get(String(p.vn)) }));
 }
 
 export interface PatientFilters {
@@ -68,7 +76,15 @@ export type SortKey =
   | 'risk'
   | 'comorbid'
   | 'cvdStatus'
-  | 'result';
+  | 'result'
+  | 'sex'
+  | 'tc'
+  | 'hdl'
+  | 'waist'
+  | 'height'
+  | 'smoke'
+  | 'dm'
+  | 'sbp';
 
 export interface SortState {
   key: SortKey;
@@ -102,6 +118,16 @@ function sortValue(p: PatientRow, key: SortKey): string | number | null {
     }
     case 'comorbid':
       return p.comorbid?.length ? p.comorbid.length : null;
+    case 'tc':
+    case 'hdl':
+    case 'waist':
+    case 'height':
+    case 'sbp':
+      return p.clinical?.[key]?.value ?? null;
+    case 'smoke':
+      return p.clinical ? (p.clinical.smoke ? 1 : 0) : null;
+    case 'dm':
+      return p.clinical ? (p.clinical.dm.dm ? 1 : 0) : null;
     default: {
       const v = str(p[key]).trim();
       return v === '' ? null : v;

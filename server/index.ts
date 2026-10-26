@@ -14,7 +14,7 @@
  */
 import path from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
-import { cvdHistorySql, diabetesSql, hospitalSql, labLinkSql, smokingSql, patientNamesSql, patientsSql, riskFactorsSql, vitalsHistorySql } from '../src/lib/hosxp/sql';
+import { cvdHistorySql, diabetesSql, hospitalSql, labLinkSql, listDiabetesSql, listHeightSql, listLabSql, listScreeningSql, smokingSql, patientNamesSql, patientsSql, riskFactorsSql, vitalsHistorySql } from '../src/lib/hosxp/sql';
 import { buildFollowUp, followUpContactsSql, withContacts } from '../src/lib/followUp';
 import { getUser, login, logout, requireLogin } from './auth';
 import { getCvdScreen, saveCvdScreen, type CvdScreenInput } from './cvdScreen';
@@ -180,7 +180,7 @@ app.post(
 
 // ---------- read-only data (signed-in users only) ----------
 
-app.use(['/api/hospital', '/api/patients', '/api/risk-factors', '/api/opdscreen', '/api/lab-link', '/api/smoking', '/api/diabetes', '/api/cvd-history', '/api/cvd-screen', '/api/report', '/api/follow-up'], requireLogin);
+app.use(['/api/hospital', '/api/patients', '/api/risk-factors', '/api/clinical', '/api/opdscreen', '/api/lab-link', '/api/smoking', '/api/diabetes', '/api/cvd-history', '/api/cvd-screen', '/api/report', '/api/follow-up'], requireLogin);
 
 app.get(
   '/api/hospital',
@@ -200,6 +200,22 @@ app.get(
     const [rows, names] = await Promise.all([d.query(patientsSql(d.dialect, from, to)), d.query(patientNamesSql(d.dialect, from, to))]);
     const byVn = new Map(names.map((n) => [String(n.vn), n]));
     return rows.map((r) => ({ ...r, ptname: byVn.get(String(r.vn))?.ptname, doctor: byVn.get(String(r.vn))?.doctor }));
+  }),
+);
+
+app.get(
+  '/api/clinical',
+  handle(async (req) => {
+    const d = await getDb();
+    const from = String(req.query.dateFrom ?? '');
+    const to = String(req.query.dateTo || from);
+    const [screenings, heights, labs, diabetes] = await Promise.all([
+      d.query(listScreeningSql(from, to)),
+      d.query(listHeightSql(from, to)),
+      d.query(listLabSql(from, to)),
+      d.query(listDiabetesSql(from, to)),
+    ]);
+    return { screenings, heights, labs, diabetes };
   }),
 );
 

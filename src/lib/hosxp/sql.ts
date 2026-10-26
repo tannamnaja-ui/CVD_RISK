@@ -254,3 +254,49 @@ export const cvdHistorySql = (vn: string) => `
 /** Thai address of the patient's tambon and amphoe (thaiaddress.codetype 3 = tambon, 2 = amphoe); needs patient p. */
 export const TAMBON_JOIN = `left outer join thaiaddress ta on ta.codetype='3' and ta.chwpart=p.chwpart and ta.amppart=p.amppart and ta.tmbpart=p.tmbpart
   left outer join thaiaddress tamp on tamp.codetype='2' and tamp.chwpart=p.chwpart and tamp.amppart=p.amppart`;
+
+// ---------- assessment inputs for the whole patient list (same sources as the assessment page) ----------
+
+const DAY_MS = 86_400_000;
+const shiftDate = (iso: string, days: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10);
+const hnsInRange = (from: string, to: string) => `SELECT hn FROM ovst WHERE vstdate BETWEEN ${sqlDate(from)} AND ${sqlDate(to)}`;
+
+/** Screening rows of the listed patients from a year before the range: vitals (with earlier-visit fallback), TC/HDL/FBS and smoking. */
+export const listScreeningSql = (from: string, to: string) => `
+    SELECT o.vn, o.hn, o.vstdate, s.bps, s.bw, s.height, s.waist, s.cholesterol, s.hdl, s.fbs
+      ,(CASE WHEN s.smoking_type_id IN (SELECT smoking_type_id FROM smoking_type WHERE nhso_code IN (${SMOKING_NHSO_CODES.map((c) => `'${c}'`).join(',')})) THEN 1 ELSE 0 END) as smoking
+    FROM opdscreen s
+    JOIN ovst o ON o.vn = s.vn
+    WHERE o.hn IN (${hnsInRange(from, to)})
+      AND o.vstdate BETWEEN ${sqlDate(shiftDate(from, -365))} AND ${sqlDate(to)}`;
+
+/** Latest height of each listed patient within 10 years (adult height is used from older visits too). */
+export const listHeightSql = (from: string, to: string) => `
+    SELECT x.hn, x.d as vstdate, MAX(s.height) as height
+    FROM (
+      SELECT o.hn, MAX(o.vstdate) as d FROM opdscreen s JOIN ovst o ON o.vn = s.vn
+      WHERE s.height > 0 AND o.vstdate BETWEEN ${sqlDate(shiftDate(to, -3650))} AND ${sqlDate(to)} AND o.hn IN (${hnsInRange(from, to)})
+      GROUP BY o.hn
+    ) x
+    JOIN ovst o ON o.hn = x.hn AND o.vstdate = x.d
+    JOIN opdscreen s ON s.vn = o.vn AND s.height > 0
+    GROUP BY x.hn, x.d`;
+
+/** Lab-link results (FBS 2, Total Cholesterol 4, HDL 6) of every visit in the range. */
+export const listLabSql = (from: string, to: string) => `
+    SELECT h.vn, sl.sys_lab_code_id, l.lab_order_result
+    FROM lab_order l
+    JOIN lab_head h ON h.lab_order_number = l.lab_order_number
+    JOIN sys_lab_link sl ON sl.lab_items_code = l.lab_items_code
+    WHERE sl.sys_lab_code_id IN ('2','${SYS_LAB_CODE.tc}','${SYS_LAB_CODE.hdl}')
+      AND h.vn IN (SELECT vn FROM ovst WHERE vstdate BETWEEN ${sqlDate(from)} AND ${sqlDate(to)})
+    ORDER BY l.lab_order_number`;
+
+/** Diabetes signals per listed patient: an E10–E14 diagnosis ever, and a glucose-lowering drug from a year before the range. */
+export const listDiabetesSql = (from: string, to: string) => `
+    SELECT p.hn
+      ,(SELECT MAX(dx.icd10) FROM ovstdiag dx JOIN ovst v2 ON v2.vn = dx.vn WHERE v2.hn = p.hn AND (${RISK_ICD.dm.map((c) => `dx.icd10 LIKE '${c}%'`).join(' OR ')})) as dm_icd10
+      ,(SELECT MAX(di.name) FROM opitemrece r JOIN drugitems di ON di.icode = r.icode
+         WHERE r.hn = p.hn AND r.vstdate BETWEEN ${sqlDate(shiftDate(from, -DM_DRUG_LOOKBACK_DAYS))} AND ${sqlDate(to)}
+           AND (${DM_DRUG_NAMES.map((n) => `LOWER(di.name) LIKE '%${n}%'`).join(' OR ')})) as dm_drug
+    FROM (SELECT DISTINCT hn FROM ovst WHERE vstdate BETWEEN ${sqlDate(from)} AND ${sqlDate(to)}) p`;

@@ -1,9 +1,10 @@
 import { useCallback } from 'react';
 import { useBmsSessionContext } from '../contexts/BmsSessionContext';
 import type { PatientRow, RiskRow } from '../lib/hosxp/patients';
-import { LIST_QUERY_VARIANTS, cvdHistorySql, diabetesSql, hospitalSql, labLinkSql, smokingSql, patientNamesSql, patientsSql, riskFactorsSql, vitalsHistorySql, type Dialect } from '../lib/hosxp/sql';
+import { LIST_QUERY_VARIANTS, cvdHistorySql, diabetesSql, hospitalSql, labLinkSql, listDiabetesSql, listHeightSql, listLabSql, listScreeningSql, smokingSql, patientNamesSql, patientsSql, riskFactorsSql, vitalsHistorySql, type Dialect } from '../lib/hosxp/sql';
 import type { VitalsRow } from '../lib/hosxp/vitals';
 import type { DiabetesRow } from '../lib/hosxp/diabetes';
+import type { ClinicalData } from '../lib/hosxp/clinical';
 import { buildFollowUp, followUpContactsSql, withContacts, type FollowUp } from '../lib/followUp';
 import { dataMode } from '../services/dataMode';
 import { serverCall } from '../services/directAuth';
@@ -200,6 +201,21 @@ export function useHosxp() {
     [dialect, query],
   );
 
+  /** Assessment inputs for the whole patient list (see lib/hosxp/clinical.ts). */
+  const loadClinical = useCallback(
+    async (from: string, to: string): Promise<ClinicalData> => {
+      if (mode === 'direct') return api<ClinicalData>(`/api/clinical?${new URLSearchParams({ dateFrom: from, dateTo: to })}`);
+      const [screenings, heights, labs, diabetes] = await Promise.all([
+        query(listScreeningSql(from, to)),
+        query(listHeightSql(from, to)),
+        query(listLabSql(from, to)),
+        query(listDiabetesSql(from, to)),
+      ]);
+      return { screenings, heights, labs, diabetes };
+    },
+    [api, mode, query],
+  );
+
   /** Every Thai CV Risk result saved for the patient of this visit, oldest first. */
   const cvdHistory = useCallback(
     async (vn: string): Promise<CvdHistoryRow[]> => {
@@ -235,5 +251,5 @@ export function useHosxp() {
     }
   }, [connectionConfig, mode, query]);
 
-  return { mode, hospitalName, listPatients, loadNames, loadRiskFactors, vitals, labs, smoking, diabetes, followUp, followUpContacts, cvdHistory, diagnose };
+  return { mode, hospitalName, listPatients, loadNames, loadRiskFactors, vitals, labs, smoking, diabetes, loadClinical, followUp, followUpContacts, cvdHistory, diagnose };
 }

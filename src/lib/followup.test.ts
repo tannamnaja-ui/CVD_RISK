@@ -3,6 +3,7 @@ import { appointmentKept, missedAppointment } from './appointments';
 import { EMPTY_FORM, resolveThaiMode, type FormValues } from './formModel';
 import { pickVitals } from './hosxp/vitals';
 import { diabetesFrom } from './hosxp/diabetes';
+import { buildClinical } from './hosxp/clinical';
 import { diabetesSql } from './hosxp/sql';
 import { modifiableFactors, thaiResult, thaiWhatIf } from './whatIf';
 
@@ -61,6 +62,43 @@ describe('diabetes auto-tick', () => {
   it('rejects malformed VNs', () => {
     expect(() => diabetesSql('postgresql', "1' OR '1'='1")).toThrow();
     expect(diabetesSql('mysql', '690619000427')).toContain('DATE_SUB');
+  });
+});
+
+describe('patient-list assessment inputs', () => {
+  const visits = [
+    { vn: 'A', hn: '1', vstdate: '2026-10-20' },
+    { vn: 'B', hn: '2', vstdate: '2026-10-20' },
+  ];
+  const data = {
+    screenings: [
+      { vn: 'A', hn: '1', vstdate: '2026-10-20', bps: 150, waist: null, height: null, cholesterol: null, hdl: 45, fbs: 130, smoking: 1 },
+      { vn: 'A0', hn: '1', vstdate: '2026-09-01', bps: 120, waist: 92, height: null },
+      { vn: 'A9', hn: '1', vstdate: '2026-10-25', bps: 99, waist: 70 }, // after the visit: must not be used
+      { vn: 'B', hn: '2', vstdate: '2026-10-20', bps: 0, cholesterol: 210, hdl: null, smoking: 0 },
+    ],
+    heights: [{ hn: '1', vstdate: '2020-05-01', height: 160 }],
+    labs: [
+      { vn: 'A', sys_lab_code_id: 4, lab_order_result: '240' },
+      { vn: 'A', sys_lab_code_id: 6, lab_order_result: '40' },
+      { vn: 'B', sys_lab_code_id: 4, lab_order_result: '199' },
+    ],
+    diabetes: [{ hn: '2', dm_icd10: 'E119', dm_drug: null }],
+  };
+  const c = buildClinical(visits, data);
+  it('uses the screening record first, then the lab result', () => {
+    expect(c.get('A')!.tc).toEqual({ value: 240, source: 'ผลแล็บ' });
+    expect(c.get('A')!.hdl).toEqual({ value: 45, source: 'ซักประวัติ' });
+    expect(c.get('B')!.tc).toEqual({ value: 210, source: 'ซักประวัติ' });
+  });
+  it('fills vitals from earlier visits only, and flags smoking and diabetes', () => {
+    expect(c.get('A')!.sbp).toEqual({ value: 150, date: '2026-10-20', current: true });
+    expect(c.get('A')!.waist).toEqual({ value: 92, date: '2026-09-01', current: false });
+    expect(c.get('A')!.height?.value).toBe(160);
+    expect(c.get('B')!.sbp).toBeUndefined();
+    expect(c.get('A')!.smoke).toBe(true);
+    expect(c.get('A')!.dm.reasons).toEqual(['FBS 130 (ซักประวัติ)']);
+    expect(c.get('B')!.dm.reasons).toEqual(['วินิจฉัย E119']);
   });
 });
 

@@ -27,6 +27,9 @@ export interface VitalsRow {
   waist?: unknown;
   cholesterol?: unknown;
   hdl?: unknown;
+  /** listScreeningSql only: FBS and smoking flag (1 = nhso_code 1 or 2) */
+  fbs?: unknown;
+  smoking?: unknown;
 }
 
 /** TC / HDL recorded in this visit's screening (opdscreen.cholesterol, opdscreen.hdl) — this visit only, never an earlier one. */

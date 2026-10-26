@@ -4610,3 +4610,26 @@ p {
 .assessed-badge--button:hover {
   background: #d3f0de;
 }
+
+/* assessment-input columns in the patient list */
+.ptable .clin-earlier {
+  color: #8a6d1d;
+  font-style: italic;
+}
+
+.ptable .clin-lab {
+  text-decoration: underline dotted #94a3b8;
+  text-underline-offset: 3px;
+}
+
+.ptable .clin-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fdecee;
+  color: #a4232f;
+  font-weight: 700;
+  white-space: nowrap;
+}

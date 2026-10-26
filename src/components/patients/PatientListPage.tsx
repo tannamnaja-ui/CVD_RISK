@@ -10,6 +10,7 @@ import {
   cvdStatus,
   RISK_FACTOR_LABELS,
   applyRiskFactors,
+  applyClinical,
   SCREENING_AGE,
   applyPatientFilters,
   dateOf,
@@ -24,7 +25,9 @@ import {
   type SortKey,
   type SortState,
 } from '../../lib/hosxp/patients';
-import { AlertTriangleIcon, CalendarIcon, EraserIcon, FilterIcon, InboxIcon, InfoIcon, KeyIcon, SearchIcon, SheetIcon, SortIcon } from '../Icons';
+import { buildClinical, type LabValue } from '../../lib/hosxp/clinical';
+import { thaiDate, type PickedVital } from '../../lib/hosxp/vitals';
+import { AlertTriangleIcon, CalendarIcon, CheckIcon, EraserIcon, FilterIcon, InboxIcon, InfoIcon, KeyIcon, SearchIcon, SheetIcon, SortIcon } from '../Icons';
 import { Modal } from '../Modal';
 
 const STATE_KEY = 'patients_state';
@@ -55,7 +58,7 @@ function loadSavedState(): SavedState | null {
 }
 
 export function PatientListPage() {
-  const { mode, listPatients, loadNames: fetchNames, loadRiskFactors, diagnose } = useHosxp();
+  const { mode, listPatients, loadNames: fetchNames, loadRiskFactors, loadClinical: fetchClinical, diagnose } = useHosxp();
   const [saved] = useState(loadSavedState);
   const [dateFrom, setDateFrom] = useState(saved?.dateFrom ?? todayLocal());
   const [dateTo, setDateTo] = useState(saved?.dateTo ?? todayLocal());
@@ -78,6 +81,8 @@ export function PatientListPage() {
   const [comorbidCriteriaOpen, setComorbidCriteriaOpen] = useState(false);
   /** risk-factor data loads after the list; the filter is unavailable until it has */
   const [riskStatus, setRiskStatus] = useState<{ state: 'idle' | 'loading' | 'ready' | 'error'; message?: string }>(() => ({ state: saved?.patients.some((p) => p.risk) ? 'ready' : 'idle' }));
+  /** the assessment-input columns load after the list too */
+  const [clinicalStatus, setClinicalStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(() => (saved?.patients.some((p) => p.clinical) ? 'ready' : 'idle'));
 
   // BMS mode: the list has no protected fields, so it loads without an authorization request.
   // Direct mode: the data server returns names too.
@@ -98,6 +103,7 @@ export function PatientListPage() {
       setRange({ from, to });
       setNamesShown(namesIncluded);
       void loadRisk(from, to);
+      void loadClinicalColumns(from, to);
     } catch (e) {
       setPatients([]);
       setError(`เกิดข้อผิดพลาด: ${(e as Error).message}`);
@@ -108,6 +114,19 @@ export function PatientListPage() {
       setLoaded(true);
     }
   }, [dateFrom, dateTo, diagnose, listPatients]);
+
+  /** Assessment inputs (TC, HDL, waist, height, smoking, diabetes, SBP), from the same sources as the assessment page. */
+  async function loadClinicalColumns(from: string, to: string) {
+    setClinicalStatus('loading');
+    try {
+      const data = await fetchClinical(from, to);
+      setPatients((rows) => applyClinical(rows, buildClinical(rows.map((p) => ({ vn: String(p.vn), hn: p.hn, vstdate: p.vstdate })), data)));
+      setClinicalStatus('ready');
+    } catch (e) {
+      console.warn('[clinical columns]', (e as Error).message);
+      setClinicalStatus('error');
+    }
+  }
 
   /** Major-risk-factor data (diagnosis history + today's vitals), merged into the rows once loaded. */
   async function loadRisk(from: string, to: string) {
@@ -176,7 +195,12 @@ export function PatientListPage() {
       alert('ไม่มีข้อมูลสำหรับส่งออก');
       return;
     }
-    const headers = ['คัดกรอง CVD', 'ผลการประเมิน', 'วันที่มา', 'HN', 'ชื่อ - สกุล', 'อายุ', 'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'รายละเอียด DiagText', 'แผนก', 'ห้องตรวจ', 'สิทธิ'];
+    const headers = [
+      'คัดกรอง CVD', 'ผลการประเมิน', 'วันที่มา', 'HN', 'ชื่อ - สกุล',
+      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว (Waist)', 'ส่วนสูง (Height)', 'สูบบุหรี่', 'เป็นโรคเบาหวาน', 'อายุ (Age)', 'เพศ (Sex)', 'ความดันโลหิต SBP',
+      'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'รายละเอียด DiagText', 'แผนก', 'ห้องตรวจ', 'สิทธิ',
+    ];
+    const val = (v?: { value: number }) => (v ? Math.round(v.value * 10) / 10 : '');
     const data = rows.map((p) => [
       (() => {
         const st = cvdStatus(p);
@@ -186,7 +210,15 @@ export function PatientListPage() {
       dateOf(p.vstdate),
       p.hn ?? '',
       p.ptname ?? '',
-      p.age ?? '',
+      val(p.clinical?.tc),
+      val(p.clinical?.hdl),
+      val(p.clinical?.waist),
+      val(p.clinical?.height),
+      p.clinical ? (p.clinical.smoke ? 'ใช่' : '') : '',
+      p.clinical ? (p.clinical.dm.dm ? 'ใช่' : '') : '',
+      p.age_y ?? '',
+      SEX_LABEL[String(p.sex)] ?? '',
+      val(p.clinical?.sbp),
       (p.risk ?? []).map((r) => RISK_FACTOR_LABELS[r].label).join(', '),
       (p.comorbid ?? []).map((c) => COMORBID_LABELS[c].label).join(', '),
       p.pdx ?? '',
@@ -359,7 +391,15 @@ export function PatientListPage() {
                 <SortTh k="vstdate" sort={sort} onSort={sortBy}>วันที่มา</SortTh>
                 <SortTh k="hn" sort={sort} onSort={sortBy}>HN</SortTh>
                 <SortTh k="ptname" sort={sort} onSort={sortBy}>ชื่อ - สกุล</SortTh>
-                <SortTh k="age" sort={sort} onSort={sortBy}>อายุ</SortTh>
+                <SortTh k="tc" sort={sort} onSort={sortBy}>Total Cholesterol</SortTh>
+                <SortTh k="hdl" sort={sort} onSort={sortBy}>HDL Cholesterol</SortTh>
+                <SortTh k="waist" sort={sort} onSort={sortBy}>รอบเอว (Waist)</SortTh>
+                <SortTh k="height" sort={sort} onSort={sortBy}>ส่วนสูง (Height)</SortTh>
+                <SortTh k="smoke" sort={sort} onSort={sortBy}>สูบบุหรี่</SortTh>
+                <SortTh k="dm" sort={sort} onSort={sortBy}>เป็นโรคเบาหวาน</SortTh>
+                <SortTh k="age" sort={sort} onSort={sortBy}>อายุ (Age)</SortTh>
+                <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ (Sex)</SortTh>
+                <SortTh k="sbp" sort={sort} onSort={sortBy}>ความดันโลหิต SBP</SortTh>
                 <SortTh k="risk" sort={sort} onSort={sortBy}>ปัจจัยเสี่ยง</SortTh>
                 <SortTh k="comorbid" sort={sort} onSort={sortBy}>โรคร่วม/ภาวะเสี่ยง</SortTh>
                 <SortTh k="pdx" sort={sort} onSort={sortBy}>PDX</SortTh>
@@ -386,7 +426,15 @@ export function PatientListPage() {
                 </EmptyRow>
               ) : (
                 rows.map((p, i) => (
-                  <PatientTr key={p.vn} p={p} index={i} riskLoading={riskStatus.state === 'loading'} namesShown={namesShown} onOpen={openPatient} />
+                  <PatientTr
+                    key={p.vn}
+                    p={p}
+                    index={i}
+                    riskLoading={riskStatus.state === 'loading'}
+                    clinicalLoading={clinicalStatus === 'loading'}
+                    namesShown={namesShown}
+                    onOpen={openPatient}
+                  />
                 ))
               )}
             </tbody>
@@ -606,12 +654,51 @@ interface PatientTrProps {
   p: PatientRow;
   index: number;
   riskLoading: boolean;
+  clinicalLoading: boolean;
   namesShown: boolean;
   onOpen: (p: PatientRow) => void;
 }
 
+/** HOSxP patient.sex shown as on the assessment page */
+const SEX_LABEL: Record<string, string> = { '1': 'ชาย = 1', '2': 'หญิง = 2' };
+
+/** A vital sign; one taken from an earlier visit is marked * with its date (as on the assessment page). */
+function VitalCell({ v, loading, digits = 0 }: { v?: PickedVital; loading: boolean; digits?: number }) {
+  if (!v) return <span className="no-dx">{loading ? '…' : '–'}</span>;
+  const text = digits ? v.value.toFixed(digits).replace(/\.0+$/, '') : String(Math.round(v.value));
+  return v.current ? (
+    <>{text}</>
+  ) : (
+    <span className="clin-earlier" title={`ค่าจาก visit ${thaiDate(v.date)}`}>
+      {text}*
+    </span>
+  );
+}
+
+/** TC / HDL with where it came from (screening record, or lab result). */
+function LabCell({ v, loading }: { v?: LabValue; loading: boolean }) {
+  if (!v) return <span className="no-dx">{loading ? '…' : '–'}</span>;
+  return (
+    <span className={v.source === 'ผลแล็บ' ? 'clin-lab' : undefined} title={`จาก${v.source}`}>
+      {Math.round(v.value * 10) / 10}
+    </span>
+  );
+}
+
+function FlagCell({ on, title, loading, known }: { on: boolean; title?: string; loading: boolean; known: boolean }) {
+  if (!known) return <span className="no-dx">{loading ? '…' : '–'}</span>;
+  return on ? (
+    <span className="clin-flag" title={title}>
+      <CheckIcon size={13} /> ใช่
+    </span>
+  ) : (
+    <span className="no-dx">–</span>
+  );
+}
+
 /** One table row; memoised so typing in a filter or other page state does not re-render every row. */
-const PatientTr = memo(function PatientTr({ p, index, riskLoading, namesShown, onOpen }: PatientTrProps) {
+const PatientTr = memo(function PatientTr({ p, index, riskLoading, clinicalLoading, namesShown, onOpen }: PatientTrProps) {
+  const c = p.clinical;
   return (
     <tr onClick={() => onOpen(p)} title="คลิกเพื่อประเมิน CV Risk">
       <td className="muted">{index + 1}</td>
@@ -624,7 +711,31 @@ const PatientTr = memo(function PatientTr({ p, index, riskLoading, namesShown, o
       <td>{dateOf(p.vstdate) || '–'}</td>
       <td className="mono">{p.hn || '–'}</td>
       <td className="strong">{p.ptname || (namesShown ? '–' : <span className="no-dx">ซ่อนอยู่</span>)}</td>
-      <td className="small">{p.age || '–'}</td>
+      <td className="center">
+        <LabCell v={c?.tc} loading={clinicalLoading} />
+      </td>
+      <td className="center">
+        <LabCell v={c?.hdl} loading={clinicalLoading} />
+      </td>
+      <td className="center">
+        <VitalCell v={c?.waist} loading={clinicalLoading} digits={1} />
+      </td>
+      <td className="center">
+        <VitalCell v={c?.height} loading={clinicalLoading} digits={1} />
+      </td>
+      <td className="center">
+        <FlagCell on={!!c?.smoke} known={!!c} loading={clinicalLoading} title="ซักประวัติ: ยังสูบ หรือเลิกสูบ (smoking_type nhso_code 1, 2)" />
+      </td>
+      <td className="center">
+        <FlagCell on={!!c?.dm.dm} known={!!c} loading={clinicalLoading} title={c?.dm.reasons.join(' · ')} />
+      </td>
+      <td className="center" title={p.age || undefined}>
+        {p.age_y ?? '–'}
+      </td>
+      <td className="small">{SEX_LABEL[String(p.sex)] ?? '–'}</td>
+      <td className="center">
+        <VitalCell v={c?.sbp} loading={clinicalLoading} />
+      </td>
       <td className="risk-cell">
         {p.risk === undefined ? (
           <span className="no-dx">{riskLoading ? '…' : '–'}</span>
@@ -672,7 +783,7 @@ const PatientTr = memo(function PatientTr({ p, index, riskLoading, namesShown, o
 function EmptyRow({ children, tone }: { children: ReactNode; tone?: 'error' }) {
   return (
     <tr className="ptable__empty">
-      <td colSpan={15} className={tone === 'error' ? 'is-error' : undefined}>
+      <td colSpan={23} className={tone === 'error' ? 'is-error' : undefined}>
         <span>{children}</span>
       </td>
     </tr>
