@@ -1,0 +1,5 @@
+node_modules
+dist
+# database credentials — never commit
+config.json
+logs
