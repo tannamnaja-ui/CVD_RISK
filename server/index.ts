@@ -98,7 +98,9 @@ const handle =
  */
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 function localOnly(req: Request, res: Response, next: NextFunction) {
-  const fromThisPc = LOOPBACK.has(req.socket.remoteAddress ?? '');
+  // through the Vite dev proxy the socket is always loopback; Vite passes the real client address
+  const forwarded = req.headers['x-cv-client-ip'];
+  const fromThisPc = LOOPBACK.has(req.socket.remoteAddress ?? '') && (forwarded === undefined || LOOPBACK.has(String(forwarded)));
   if (fromThisPc && (req.hostname === 'localhost' || req.hostname === '127.0.0.1')) return next();
   res.status(403).json({ success: false, message: 'เปิดได้จากเครื่องนี้ (localhost) เท่านั้น — จากเครื่องอื่นให้เปิดผ่าน HOSxP XE' });
 }
