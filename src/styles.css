@@ -4685,3 +4685,191 @@ p {
 .th-nowrap {
   white-space: nowrap;
 }
+
+/* =====================================================================
+   Visual refresh — colour, size, depth and states only; nothing moves.
+   ===================================================================== */
+
+:root {
+  --bg: #f3f6f6;
+  --border: #e2eae8;
+  --shadow-sm: 0 1px 2px rgb(23 64 60 / 0.06);
+  --shadow: 0 1px 2px rgb(23 64 60 / 0.05), 0 6px 20px rgb(23 64 60 / 0.06);
+}
+
+/* header: slimmer and calmer */
+.app-header {
+  background: linear-gradient(120deg, #237f76 0%, #2e7c9b 100%);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06), 0 4px 14px rgb(23 64 60 / 0.12);
+}
+
+.app-header__inner {
+  padding: 10px 16px;
+  gap: 12px;
+}
+
+.brand {
+  gap: 12px;
+}
+
+.brand__logo {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+}
+
+.brand__title {
+  font-size: 1.22rem;
+}
+
+.brand__subtitle {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.app-nav__link {
+  padding: 6px 13px;
+  font-size: 0.86rem;
+  border-color: rgb(255 255 255 / 0.18);
+  background: rgb(255 255 255 / 0.08);
+}
+
+.app-nav__link.is-active {
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.12);
+}
+
+/* signed-in user (top right, same place): smaller */
+.user-chip {
+  gap: 7px;
+  padding: 3px 4px 3px 4px;
+  background: rgb(255 255 255 / 0.12);
+  border-color: rgb(255 255 255 / 0.2);
+}
+
+.user-chip__avatar {
+  width: 26px;
+  height: 26px;
+}
+
+.user-chip__avatar svg {
+  width: 15px;
+  height: 15px;
+}
+
+.user-chip__name {
+  font-size: 0.78rem;
+}
+
+.user-chip__loc {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.user-chip .icon-btn {
+  width: 26px;
+  height: 26px;
+}
+
+.user-chip .icon-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* buttons: flat, clear primary actions */
+.pbtn {
+  border-color: #d5e3e0;
+  box-shadow: 0 1px 2px rgb(23 64 60 / 0.08);
+  font-weight: 600;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, color 0.15s;
+}
+
+.pbtn:hover {
+  transform: none;
+  border-color: #b9d3ce;
+  box-shadow: 0 2px 8px rgb(23 64 60 / 0.12);
+}
+
+.pbtn:active {
+  transform: translateY(1px);
+}
+
+.pbtn--primary {
+  background: #2a8c82;
+  border-color: #2a8c82;
+  color: #fff;
+}
+
+.pbtn--primary:hover {
+  background: #23786f;
+  border-color: #23786f;
+}
+
+.pbtn--green {
+  background: #2f9461;
+  border-color: #2f9461;
+  color: #fff;
+}
+
+.pbtn--green:hover {
+  background: #277f53;
+  border-color: #277f53;
+}
+
+.pbtn--ghost {
+  background: #fff;
+}
+
+.pbtn--ghost:hover {
+  background: #f1f8f6;
+}
+
+.pbtn:disabled,
+.pbtn:disabled:hover {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+/* inputs: softer border, clearer focus */
+.pinput,
+.pinput-group {
+  border-color: #d9e5e3;
+}
+
+.pinput:focus,
+.pinput-group:focus-within {
+  border-color: #2a8c82;
+  box-shadow: 0 0 0 3px rgb(42 140 130 / 0.15);
+}
+
+/* list cards and toolbars */
+.plist__card {
+  border-radius: 14px;
+}
+
+.plist__toolbar {
+  background: #fbfcfc;
+  border-bottom-color: #e6eeec;
+}
+
+/* tables: quiet header, zebra rows, clear hover */
+.ptable th {
+  background: #eef5f3;
+  color: #24524c;
+  box-shadow: inset 0 -2px 0 #d2e3df;
+}
+
+.ptable th.ptable__sortable.is-sorted {
+  background: #dcefea;
+}
+
+.ptable tbody tr:nth-child(even) > td {
+  background: #fafcfc;
+}
+
+.ptable tbody tr:hover > td {
+  background: #e8f4f1;
+}
+
+.ptable td {
+  border-bottom-color: #eef3f2;
+}
