@@ -22,7 +22,7 @@ export function EngineSelector({ value, hidden, onChange, onShowFormula }: Engin
                 <span className="engine__label">{e.label}</span>
                 <span className="engine__sub">{e.sublabel}</span>
               </span>
-              <span className="engine__age">{e.ageLabel}</span>
+              {e.ageLabel && <span className="engine__age">{e.ageLabel}</span>}
             </button>
             <button type="button" className="engine__formula" onClick={() => onShowFormula(e.id)} aria-label={`สูตรที่ใช้ของ ${e.label}`}>
               <FunctionIcon size={14} /> สูตรที่ใช้

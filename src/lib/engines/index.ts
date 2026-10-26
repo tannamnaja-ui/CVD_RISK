@@ -20,20 +20,20 @@ export const MODELS: Record<ModelId, ModelDef> = {
 };
 
 /** Order used by the comparison table. */
-export const MODEL_ORDER: ModelId[] = ['thai-ratio', 'thai-lab', 'thai-nonlab', 'frs', 'ascvd', 'score2', 'who', 'qrisk3'];
+export const MODEL_ORDER: ModelId[] = ['thai-lab', 'thai-nonlab', 'frs', 'ascvd', 'score2', 'who', 'qrisk3'];
 
 export interface EngineInfo {
   id: EngineId;
   label: string;
   sublabel: string;
-  ageLabel: string;
+  ageLabel?: string;
 }
 
 export const ENGINES: EngineInfo[] = [
-  { id: 'thai', label: 'Thai CV Risk', sublabel: 'อัตโนมัติตามผลเลือด', ageLabel: '35–70 ปี' },
-  { id: 'thai-ratio', label: 'Thai CV · TC/HDL', sublabel: 'รามาธิบดี (ตามที่ส่งมา)', ageLabel: '35–70 ปี' },
-  { id: 'thai-tc', label: 'Thai CV · TC', sublabel: 'ข้อกำหนดเดิมของโครงการ', ageLabel: '35–70 ปี' },
-  { id: 'thai-nonlab', label: 'Thai CV · Non-Lab', sublabel: 'WHtR · ข้อกำหนดเดิม', ageLabel: '35–70 ปี' },
+  { id: 'thai', label: 'Thai CV Risk', sublabel: 'อัตโนมัติตามผลเลือด' },
+  { id: 'thai-ratio', label: 'Thai CV · TC/HDL', sublabel: 'ใช้สูตร TC ทางการ (ไม่ใช้ HDL)' },
+  { id: 'thai-tc', label: 'Thai CV · TC', sublabel: 'สูตรทางการ · ตามตารางสี' },
+  { id: 'thai-nonlab', label: 'Thai CV · Non-Lab', sublabel: 'WHtR · สูตรทางการ' },
   { id: 'frs', label: 'Framingham', sublabel: 'General CVD 2008', ageLabel: '30–74 ปี' },
   { id: 'ascvd', label: 'ASCVD', sublabel: 'ACC/AHA PCE 2013', ageLabel: '40–79 ปี' },
   { id: 'score2', label: 'SCORE2 / OP', sublabel: 'ESC 2021', ageLabel: '40–89 ปี' },

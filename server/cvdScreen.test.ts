@@ -27,13 +27,14 @@ describe('opdscreen_cvd values', () => {
 
 describe('opdscreen_cvd follows the formula picked on screen', () => {
   const base = { vn: '1', age: '60', gender: 'male' as const, sbp: '150', dm: true, smoke: false, tc: '240', hdl: '40' };
-  it('automatic: TC + HDL → ratio model', () => {
+  it('automatic with TC (HDL or not), the TC card and the TC/HDL card all save the same chart-based result', () => {
     const auto = thaiResult(base);
-    const tcOnly = thaiResult({ ...base, thaiFormula: 'lab' });
-    expect(auto.risk).not.toBeCloseTo(tcOnly.risk, 2);
+    expect(thaiResult({ ...base, thaiFormula: 'lab' }).risk).toBe(auto.risk);
+    expect(thaiResult({ ...base, hdl: '', thaiFormula: 'ratio' }).risk).toBe(auto.risk);
     expect(auto.tc).toBe(240);
   });
-  it('the ratio model needs HDL', () => {
-    expect(() => thaiResult({ ...base, hdl: '', thaiFormula: 'ratio' })).toThrow(/HDL/);
+  it('saves the colour-chart level: DM, woman, smoker, 64 y, SBP 135, TC 244 → level 2 (moderate)', () => {
+    const r = thaiResult({ vn: '1', age: '64', gender: 'female', sbp: '135', dm: true, smoke: true, tc: '244', hdl: '52' });
+    expect(r.typeId).toBe(2);
   });
 });

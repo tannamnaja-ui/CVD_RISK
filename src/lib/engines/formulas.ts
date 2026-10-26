@@ -55,7 +55,7 @@ function categoryTable(categories: RiskCategory[]): FormulaTable {
 const VARIABLES_BINARY = 'Gender: ชาย = 1, หญิง = 0 · DM: เป็นเบาหวาน = 1, ไม่เป็น = 0 · Smoke: สูบ = 1, ไม่สูบ = 0';
 
 // ---------------------------------------------------------------- Thai CV
-const tr = THAI_COEFFICIENTS.ratio;
+
 const tl = THAI_COEFFICIENTS.lab;
 const tn = THAI_COEFFICIENTS.nonlab;
 /** "ที่มา / ยังไม่ได้ยืนยัน" lines for one Thai formula. */
@@ -68,31 +68,27 @@ const thai: FormulaInfo = {
   engine: 'thai',
   title: 'Thai CV Risk Score',
   summary:
-    'ประเมินความเสี่ยงโรคหัวใจและหลอดเลือดระยะ 10 ปีสำหรับคนไทย อายุ 35–70 ปี มี 3 สูตรให้เลือกในหน้าคำนวณ (หรือเลือกอัตโนมัติ: มี TC และ HDL → TC/HDL Ratio, มีแค่ TC → Total Cholesterol, ไม่มีผลเลือด → Non-Lab) — สูตร Total Cholesterol และ Non-Lab เป็นสมการทางการ ส่วนสูตร TC/HDL ยังไม่ได้ยืนยัน',
+    'ประเมินความเสี่ยงโรคหัวใจและหลอดเลือดระยะ 10 ปีสำหรับคนไทย ด้วยสมการทางการ 2 แบบ (เลือกอัตโนมัติ: มี Total Cholesterol → สูตร TC ตามตารางสีกรมควบคุมโรค, ไม่มีผลเลือด → สูตรรอบเอว/ส่วนสูง) — กล่อง TC/HDL ใช้สูตร TC เช่นกัน เพราะยังไม่พบสมการ TC/HDL ทางการ',
   sections: [
     {
-      heading: `สูตรที่ 1 — ${THAI_FORMULAS.ratio.name}`,
+      heading: `สูตรที่ 1 และ 2 — ${THAI_FORMULAS.lab.name} (กล่อง TC/HDL และกล่อง TC)`,
       equations: [
-        'Ratio = Total Cholesterol (mg/dL) / HDL-Cholesterol (mg/dL)',
-        `ΣβX = (${tr.coef.male} × Gender) + (${tr.coef.age} × Age) + (${tr.coef.sbp} × SBP) + (${tr.coef.dm} × DM) + (${tr.coef.smoke} × Smoke) + (${tr.coef.ratio} × Ratio)`,
-        `Risk (%) = [1 − ${tr.baselineSurvival}^exp(ΣβX − ${tr.meanSum})] × 100`,
+        `FullScore = (${tl.coef.age} × Age) + (${tl.coef.male} × Sex) + (${tl.coef.sbp} × SBP) + (${tl.coef.dm} × DM) + (${tl.coef.tc} × TC) + (${tl.coef.smoke} × Smoking)`,
+        `P FullScore (%) = [1 − ${tl.baselineSurvival}^exp(FullScore − ${tl.meanSum})] × 100`,
+        'ตามตารางสี: Age → 40 (< 50), 50, 55, 60, 65 · SBP → 120 (< 140), 140, 160, 180 · TC → 160 (< 200), 200, 240, 280, 320 (ค่าต่ำสุดของแต่ละช่วงในตาราง)',
       ],
-      text: thaiSource('ratio'),
-    },
-    {
-      heading: `สูตรที่ 2 — ${THAI_FORMULAS.lab.name}`,
-      equations: [
-        `ΣβX = (${tl.coef.age} × Age) + (${tl.coef.male} × Gender) + (${tl.coef.dm} × DM) + (${tl.coef.smoke} × Smoke) + (${tl.coef.sbp} × SBP) + (${tl.coef.tc} × TC)`,
-        `Risk (%) = [1 − ${tl.baselineSurvival}^exp(ΣβX − ${tl.meanSum})] × 100`,
+      text: [
+        'Sex: ชาย = 1, หญิง = 0 · DM / Smoking: ใช่ = 1, ไม่ใช่ = 0 · TC หน่วย mg/dL, SBP หน่วย mmHg',
+        'ผลหลักคำนวณที่ค่าต่ำสุดของช่วงที่ผู้ป่วยอยู่ ให้ได้ระดับเดียวกับตารางสีที่ 2 (ตรวจกับทุกช่องของตารางแล้ว ตรง 752 จาก 800 ช่อง ที่เหลืออยู่ชิดเส้น 10% / 30%) และแสดงผลจากค่าจริงของผู้ป่วยไว้ในรายละเอียด',
+        ...thaiSource('lab'),
       ],
-      text: ['TC หน่วย mg/dL, SBP หน่วย mmHg', ...thaiSource('lab')],
     },
     {
       heading: 'ตารางสีอ้างอิง — ตารางสีที่ 2 กรณีทราบผลโคเลสเตอรอล (กรมควบคุมโรค)',
       text: [
         'ที่มา: Thai CV risk Score, โครงการศึกษาระยะยาวเพื่อหาอิทธิพลของปัจจัยเสี่ยงต่อการเกิดโรคหัวใจและหลอดเลือด 2528–2558 · สำนักโรคไม่ติดต่อ กรมควบคุมโรค กระทรวงสาธารณสุข',
         'ออกแบบโดย นางจารุมน ลัคนาวิวัฒน์ โรงพยาบาลห้วยยอด · จัดพิมพ์โดย ศูนย์หัวใจ โรงพยาบาลตรังร่วมกับงานโรคไม่ติดต่อ สำนักงานสาธารณสุขจังหวัดตรัง (ตามที่พิมพ์ในตาราง)',
-        'ตารางนี้ใช้ Total Cholesterol อย่างเดียว (ไม่ใช้ HDL) และทำจากสูตรที่ 2 — แต่ละช่องคือช่วงของอายุ/ความดัน/โคเลสเตอรอล จึงให้สีเดียวทั้งช่วง ผลจากสูตรที่ใช้ค่าจริงอาจสูงหรือต่ำกว่าสีในตารางได้เมื่อค่าอยู่ปลายช่วง',
+        'ตารางนี้ใช้ Total Cholesterol อย่างเดียว (ไม่ใช้ HDL) และทำจากสมการทางการ ณ ค่าต่ำสุดของแต่ละช่วง — โปรแกรมคำนวณแบบเดียวกัน ผลจึงเป็นระดับเดียวกับตาราง',
         'สีเหลือง 10–<20% (ปานกลาง) กับสีเหลืองเข้ม 20–<30% (สูง) ในตารางคล้ายกันมาก ควรดูตัวเลข % ประกอบ',
       ],
       image: {

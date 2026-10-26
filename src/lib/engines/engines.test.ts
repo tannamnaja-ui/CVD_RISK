@@ -36,11 +36,13 @@ const patient = (p: Partial<PatientData>) => ({ ...base, ...p }) as CheckedPatie
 const risk = (id: keyof typeof MODELS, p: Partial<PatientData>) => MODELS[id].calculate(patient(p)).risk!;
 
 describe('Thai CV Risk Score', () => {
-  it('lab model is the official equation (with Total Cholesterol)', () => {
-    // FullScore = 0.08183·50 + 0.39499 + 0.02084·140 + 0 + 0.00212·220 + 0.41916
-    const full = 0.08183 * 50 + 0.39499 + 0.02084 * 140 + 0.00212 * 220 + 0.41916;
-    const expected = (1 - Math.pow(0.978296, Math.exp(full - 7.04423))) * 100;
-    expect(risk('thai-lab', { age: 50, smoke: true, sbp: 140, tc: 220 })).toBeCloseTo(expected, 8);
+  it('lab model is the official equation, read at the colour-chart band floor', () => {
+    const official = (age: number, sbp: number, tc: number) =>
+      (1 - Math.pow(0.978296, Math.exp(0.08183 * age + 0.39499 + 0.02084 * sbp + 0.00212 * tc + 0.41916 - 7.04423))) * 100;
+    // 52 y, SBP 147, TC 226 → chart cell 50–54 / 140–159 / 200–239 → drawn at 50 / 140 / 200
+    const r = MODELS['thai-lab'].calculate(patient({ age: 52, smoke: true, sbp: 147, tc: 226 }));
+    expect(r.risk).toBeCloseTo(official(50, 140, 200), 8);
+    expect(r.details.find((d) => d.label === 'ผลจากค่าจริง')?.value).toBe(`${official(52, 147, 226).toFixed(2)}%`);
   });
 
   it('non-lab model is the official equation (waist / height)', () => {
@@ -49,12 +51,17 @@ describe('Thai CV Risk Score', () => {
     expect(risk('thai-nonlab', { gender: 'female', age: 50, sbp: 120, waist: 80, height: 160 })).toBeCloseTo(expected, 8);
   });
 
-  it('colour chart 2 cell (DM, woman, smoker, 60–64, SBP 120–139, TC 240–279) is moderate at the band floor', () => {
-    const cell = { gender: 'female' as const, dm: true, smoke: true };
-    expect(risk('thai-lab', { ...cell, age: 60, sbp: 120, tc: 240 })).toBeGreaterThanOrEqual(10);
-    expect(risk('thai-lab', { ...cell, age: 60, sbp: 120, tc: 240 })).toBeLessThan(20);
-    // the same person's real values (64 y, SBP 135, TC 244) sit high in the cell: 26.5% (high)
-    expect(risk('thai-lab', { ...cell, age: 64, sbp: 135, tc: 244 })).toBeCloseTo(26.5, 1);
+  it('follows colour chart 2: DM, woman, smoker, 64 y, SBP 135, TC 244 → moderate (yellow)', () => {
+    const r = MODELS['thai-lab'].calculate(patient({ gender: 'female', dm: true, smoke: true, age: 64, sbp: 135, tc: 244 }));
+    expect(r.risk).toBeCloseTo(14.9, 1); // the chart cell 60–64 / <120–139 / 240–279
+    expect(r.category.id).toBe('moderate');
+    expect(r.details.find((d) => d.label === 'ผลจากค่าจริง')?.value).toBe('26.53%'); // the exact values, shown alongside
+  });
+
+  it('card 2 (TC/HDL) gives the same as the TC card, without needing HDL', () => {
+    const p = { gender: 'female' as const, dm: true, smoke: true, age: 64, sbp: 135, tc: 244 };
+    expect(risk('thai-ratio', p)).toBe(risk('thai-lab', p));
+    expect(MODELS['thai-ratio'].required(patient(p))).not.toContain('hdl');
   });
 });
 
@@ -150,7 +157,7 @@ describe('assess / validation', () => {
     }
     const thai = assess(MODELS['thai-lab'], { ...p, age: 78, tc: 220 });
     expect(thai.status === 'ok' && thai.outsideAge).toBeTruthy();
-    expect(MODEL_ORDER).toHaveLength(8);
+    expect(MODEL_ORDER).toHaveLength(7);
   });
 
   it('only requires fields of the selected model', () => {
@@ -172,15 +179,9 @@ describe('assess / validation', () => {
   });
 });
 
-describe('Thai CV Risk — TC/HDL ratio model and formula choice', () => {
-  it('matches a hand-computed value', () => {
-    // B = 0.5401 + 0.0706·60 + 0.0152·150 + 0.5492 + 0 + 0.1691·(240/40) = 8.6199
-    const b = 0.5401 + 0.0706 * 60 + 0.0152 * 150 + 0.5492 + 0.1691 * 6;
-    const expected = (1 - Math.pow(0.9592, Math.exp(b - 7.7479))) * 100;
-    expect(risk('thai-ratio', { age: 60, sbp: 150, tc: 240, hdl: 40, dm: true })).toBeCloseTo(expected, 8);
-  });
-  it('picks the model from the lab values in automatic mode, or uses the chosen one', () => {
-    expect(resolveThaiMode({ tc: '200', hdl: '50', thaiFormula: 'auto' })).toBe('ratio');
+describe('Thai CV Risk — formula choice', () => {
+  it('picks the model from the lab values in automatic mode (HDL not used), or uses the chosen one', () => {
+    expect(resolveThaiMode({ tc: '200', hdl: '50', thaiFormula: 'auto' })).toBe('lab');
     expect(resolveThaiMode({ tc: '200', hdl: '', thaiFormula: 'auto' })).toBe('lab');
     expect(resolveThaiMode({ tc: '', hdl: '', thaiFormula: 'auto' })).toBe('nonlab');
     expect(resolveThaiMode({ tc: '200', hdl: '50', thaiFormula: 'lab' })).toBe('lab');
@@ -196,7 +197,7 @@ describe('Thai CV Risk cards', () => {
     expect(modelFor('thai-ratio', 'nonlab').id).toBe('thai-ratio');
     expect(modelFor('thai-tc', 'ratio').id).toBe('thai-lab');
     expect(modelFor('thai-nonlab', 'lab').id).toBe('thai-nonlab');
-    expect(modelFor('thai', 'ratio').id).toBe('thai-ratio');
+    expect(modelFor('thai', 'lab').id).toBe('thai-lab');
     expect(modelFor('thai', 'nonlab').id).toBe('thai-nonlab');
   });
   it('every card is in the engine list (so it can be hidden) and has a formula page', () => {

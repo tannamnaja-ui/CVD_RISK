@@ -166,13 +166,12 @@ export function validateForModel(values: FormValues, model: ModelDef): FormError
 }
 
 /**
- * Thai CV Risk picks its model from the lab data: TC and HDL → TC/HDL ratio (Ramathibodi),
- * TC only → Total Cholesterol model, no lab → Non-Laboratory (waist/height).
+ * Thai CV Risk picks its model from the lab data: Total Cholesterol → official TC model (as colour chart 2),
+ * no TC → Non-Laboratory (waist/height). HDL is not part of the official equations.
  */
 export function autoThaiMode(v: Pick<FormValues, 'tc' | 'hdl'>): ThaiMode {
-  const tc = parseNumber(v.tc) !== undefined;
-  const hdl = parseNumber(v.hdl) !== undefined;
-  return tc && hdl ? 'ratio' : tc ? 'lab' : 'nonlab';
+  // the official equations use Total Cholesterol (not HDL): TC → TC model, otherwise waist/height
+  return parseNumber(v.tc) !== undefined ? 'lab' : 'nonlab';
 }
 
 export type ThaiFormulaChoice = 'auto' | ThaiMode;

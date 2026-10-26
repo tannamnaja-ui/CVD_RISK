@@ -41,7 +41,7 @@ export function EngineVisibilityDialog({ open, hidden, onChange, onClose }: Engi
             <ToggleSwitch
               key={e.id}
               label={`${i + 1}. ${e.label}`}
-              description={`${e.sublabel} · อายุ ${e.ageLabel}${shown && visibleCount <= 1 ? ' — ต้องแสดงอย่างน้อย 1 สูตร' : ''}`}
+              description={`${e.sublabel}${e.ageLabel ? ` · อายุ ${e.ageLabel}` : ''}${shown && visibleCount <= 1 ? ' — ต้องแสดงอย่างน้อย 1 สูตร' : ''}`}
               checked={shown}
               onChange={(c) => setShown(e.id, c)}
               stateLabels={['ซ่อน', 'แสดง']}

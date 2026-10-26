@@ -245,7 +245,6 @@ export function CvRiskCalculator({ initialValues, vn, patient, onSaved }: CvRisk
   }, [values.weight, values.height]);
 
   const hasSettings = options.has('score2Region') || options.has('whoRegion') || options.has('ascvdRace') || isQrisk;
-  const ageRangeText = model.ageRange[1] >= 100 ? `${model.ageRange[0]} ปีขึ้นไป` : `${model.ageRange[0]}–${model.ageRange[1]} ปี`;
 
   return (
     <div className="calculator">
@@ -270,7 +269,7 @@ export function CvRiskCalculator({ initialValues, vn, patient, onSaved }: CvRisk
           <EngineSelector value={engine} hidden={hidden} onChange={(e) => switchTo(e, values)} onShowFormula={setFormulaEngine} />
           {isThaiEngine(engine) && <ThaiFormulaInfoBox auto={values.thaiFormula === 'auto'} used={values.thaiMode} />}
           <p className="panel__note">
-            <strong>{model.name}</strong> · {model.outcome} · พัฒนาจากข้อมูลอายุ {ageRangeText}
+            <strong>{model.name}</strong> · {model.outcome}
           </p>
         </Panel>
 

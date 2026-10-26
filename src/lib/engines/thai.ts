@@ -1,16 +1,10 @@
 import { fmt, pointResult, toPercent, type CheckedPatient, type ModelDef, type RiskCategory, type ThaiMode } from './types';
 
 /**
- * Thai CV Risk Score. lab / nonlab: the official equations (P FullScore = 1 − 0.978296^exp(FullScore − c));
- * ratio: as supplied for this project, not verified.
+ * Thai CV Risk Score — the official equations (P FullScore = 1 − 0.978296^exp(FullScore − c)).
+ * There is no official TC/HDL equation, so the TC/HDL card uses the TC one (see thaiRatio).
  */
 export const THAI_COEFFICIENTS = {
-  /** Ramathibodi (EGAT study) model with the TC/HDL-C ratio — coefficients as supplied for this project. */
-  ratio: {
-    coef: { age: 0.0706, male: 0.5401, dm: 0.5492, smoke: 0.4184, sbp: 0.0152, ratio: 0.1691 },
-    baselineSurvival: 0.9592,
-    meanSum: 7.7479,
-  },
   /** Official Thai CV Risk Score with Total Cholesterol (sex: male 1, female 0) — see THAI_FORMULAS.lab.source */
   lab: {
     coef: { age: 0.08183, male: 0.39499, dm: 0.69974, smoke: 0.41916, sbp: 0.02084, tc: 0.00212 },
@@ -36,11 +30,12 @@ export interface ThaiFormulaInfo {
 
 export const THAI_FORMULAS: Record<ThaiMode, ThaiFormulaInfo> = {
   ratio: {
-    name: 'สูตร TC/HDL Ratio',
-    needs: 'ต้องมี Total Cholesterol และ HDL',
-    source: 'สัมประสิทธิ์ตามข้อมูลที่ผู้ใช้ส่งมา ระบุว่าเป็นสมการของคณะแพทยศาสตร์ รพ.รามาธิบดี (โครงการศึกษาพนักงาน กฟผ. / EGAT Study)',
-    verified: false,
-    caution: 'ยังไม่ได้ตรวจสอบกับบทความต้นฉบับ และค่า S₀ = 0.9592, M̄ = 7.7479 ซ้ำกับสูตร Total Cholesterol ทั้งที่ตัวแปรต่างกัน',
+    name: 'สูตร Total Cholesterol (กล่อง TC/HDL)',
+    needs: 'ต้องมี Total Cholesterol (ไม่ใช้ HDL)',
+    source:
+      'ใช้สมการทางการแบบ Total Cholesterol เหมือนสูตรที่ 2 — ยังไม่พบสมการ TC/HDL ทางการ (สัมประสิทธิ์ TC/HDL ที่เคยส่งมาไม่ได้ใช้แล้ว)',
+    verified: true,
+    caution: 'คำนวณตามตารางสีที่ 2: ใช้ค่าต่ำสุดของช่วงอายุ/ความดัน/โคเลสเตอรอล — ผลจากค่าจริงแสดงไว้ในรายละเอียด',
   },
   lab: {
     name: 'สูตร Total Cholesterol',
@@ -48,7 +43,7 @@ export const THAI_FORMULAS: Record<ThaiMode, ThaiFormulaInfo> = {
     source:
       'Thai CV Risk Score กรณีมีค่า Total Cholesterol ตามเอกสาร "การประเมิน Thai CV Risk Score จากข้อมูล 43 แฟ้ม" (สูตรเดียวกับที่ใช้ทำตารางสีของกรมควบคุมโรค)',
     verified: true,
-    caution: 'ตารางสีให้สีเดียวต่อช่วงอายุ/ความดัน/โคเลสเตอรอล — ผลจากสูตรใช้ค่าจริงของผู้ป่วย จึงอาจต่างจากสีในตารางได้เมื่อค่าอยู่ปลายช่วง',
+    caution: 'คำนวณตามตารางสีที่ 2: ใช้ค่าต่ำสุดของช่วงอายุ/ความดัน/โคเลสเตอรอล ให้ได้สีเดียวกับตาราง — ผลจากค่าจริงแสดงไว้ในรายละเอียด',
   },
   nonlab: {
     name: 'สูตร Non-Laboratory (WHtR)',
@@ -145,66 +140,98 @@ const base = {
   ageRange: [35, 70] as [number, number],
 };
 
+/**
+ * Colour chart 2 (DDC, with Total Cholesterol) gives one colour per band of age / SBP / TC. Checked against all
+ * 800 cells of the chart: it is the official equation evaluated at the lower edge of each band (752/800 cells
+ * agree; the rest sit on the 10% / 30% boundaries). The Thai TC model works the same way, so its result is the
+ * chart's colour; the result for the patient's exact values is shown alongside.
+ */
+const CHART_BANDS = {
+  age: [
+    { from: 65, label: '≥ 65' },
+    { from: 60, label: '60–64' },
+    { from: 55, label: '55–59' },
+    { from: 50, label: '50–54' },
+    { from: 40, label: '< 40–49', min: -Infinity },
+  ],
+  sbp: [
+    { from: 180, label: '≥ 180' },
+    { from: 160, label: '160–179' },
+    { from: 140, label: '140–159' },
+    { from: 120, label: '< 120–139', min: -Infinity },
+  ],
+  tc: [
+    { from: 320, label: '≥ 320' },
+    { from: 280, label: '280–319' },
+    { from: 240, label: '240–279' },
+    { from: 200, label: '200–239' },
+    { from: 160, label: '< 160–199', min: -Infinity },
+  ],
+};
+type Band = { from: number; label: string; min?: number };
+const bandOf = (bands: Band[], v: number) => bands.find((b) => v >= (b.min ?? b.from))!;
+
+/** The chart cell of a patient: band label and the value the chart was drawn with, per variable. */
+export function chartCell(p: { age: number; sbp: number; tc: number }) {
+  return { age: bandOf(CHART_BANDS.age, p.age), sbp: bandOf(CHART_BANDS.sbp, p.sbp), tc: bandOf(CHART_BANDS.tc, p.tc) };
+}
+
+function labSum(p: { age: number; sbp: number; tc: number; gender: CheckedPatient['gender']; dm: boolean; smoke: boolean }) {
+  const { coef } = THAI_COEFFICIENTS.lab;
+  return (
+    coef.age * p.age +
+    coef.male * (p.gender === 'male' ? 1 : 0) +
+    coef.dm * (p.dm ? 1 : 0) +
+    coef.smoke * (p.smoke ? 1 : 0) +
+    coef.sbp * p.sbp +
+    coef.tc * p.tc
+  );
+}
+
+/** Official Thai CV Risk (Total Cholesterol), read the way colour chart 2 reads it. */
+function calculateLab(p: CheckedPatient, modelId: 'thai-lab' | 'thai-ratio') {
+  const { baselineSurvival, meanSum } = THAI_COEFFICIENTS.lab;
+  const cell = chartCell({ age: p.age, sbp: p.sbp, tc: p.tc! });
+  const chartSum = labSum({ ...p, age: cell.age.from, sbp: cell.sbp.from, tc: cell.tc.from });
+  const chartRisk = riskFromSum(chartSum, baselineSurvival, meanSum);
+  const exactRisk = riskFromSum(labSum({ ...p, tc: p.tc! }), baselineSurvival, meanSum);
+  return pointResult(
+    {
+      modelId,
+      variant: 'Total Cholesterol · ตามตารางสีกรมควบคุมโรค',
+      categories: THAI_CATEGORIES,
+      details: [
+        { label: 'ช่องในตารางสี', value: `อายุ ${cell.age.label} · SBP ${cell.sbp.label} · TC ${cell.tc.label}` },
+        { label: 'ผลจากค่าจริง', value: `${fmt(exactRisk)}%` },
+        { label: 'FullScore (ตารางสี)', value: fmt(chartSum, 4) },
+      ],
+      notes: [
+        `คำนวณตามตารางสีที่ 2: ใช้ค่าต่ำสุดของช่วง (อายุ ${cell.age.from}, SBP ${cell.sbp.from}, TC ${cell.tc.from}) — ผลจากค่าจริงของผู้ป่วย ${fmt(exactRisk)}%`,
+      ],
+    },
+    chartRisk,
+  );
+}
+
 export const thaiLab: ModelDef = {
   ...base,
   engine: 'thai-tc',
   id: 'thai-lab',
-  shortName: 'Thai CV (Lab)',
+  shortName: 'Thai CV (TC)',
   required: () => ['age', 'sbp', 'tc'],
   legend: () => THAI_CATEGORIES,
-  calculate(p: CheckedPatient) {
-    const { coef, baselineSurvival, meanSum } = THAI_COEFFICIENTS.lab;
-    const sum =
-      coef.age * p.age +
-      coef.male * (p.gender === 'male' ? 1 : 0) +
-      coef.dm * (p.dm ? 1 : 0) +
-      coef.smoke * (p.smoke ? 1 : 0) +
-      coef.sbp * p.sbp +
-      coef.tc * p.tc!;
-    return pointResult(
-      {
-        modelId: 'thai-lab',
-        variant: 'Laboratory model (Total Cholesterol)',
-        categories: THAI_CATEGORIES,
-        details: [{ label: 'ΣβX', value: fmt(sum, 4) }],
-        notes: [],
-      },
-      riskFromSum(sum, baselineSurvival, meanSum),
-    );
-  },
+  calculate: (p: CheckedPatient) => calculateLab(p, 'thai-lab'),
 };
 
+/** Card 2 ("TC/HDL"): uses the official Total Cholesterol equation too — no official TC/HDL equation was found. */
 export const thaiRatio: ModelDef = {
   ...base,
   engine: 'thai-ratio',
   id: 'thai-ratio',
-  shortName: 'Thai CV (TC/HDL)',
-  required: () => ['age', 'sbp', 'tc', 'hdl'],
+  shortName: 'Thai CV (TC)',
+  required: () => ['age', 'sbp', 'tc'],
   legend: () => THAI_CATEGORIES,
-  calculate(p: CheckedPatient) {
-    const { coef, baselineSurvival, meanSum } = THAI_COEFFICIENTS.ratio;
-    const ratio = p.tc! / p.hdl!;
-    const sum =
-      coef.male * (p.gender === 'male' ? 1 : 0) +
-      coef.age * p.age +
-      coef.sbp * p.sbp +
-      coef.dm * (p.dm ? 1 : 0) +
-      coef.smoke * (p.smoke ? 1 : 0) +
-      coef.ratio * ratio;
-    return pointResult(
-      {
-        modelId: 'thai-ratio',
-        variant: 'Laboratory model (TC/HDL-C ratio)',
-        categories: THAI_CATEGORIES,
-        details: [
-          { label: 'TC/HDL ratio', value: fmt(ratio) },
-          { label: 'ΣβX', value: fmt(sum, 4) },
-        ],
-        notes: [],
-      },
-      riskFromSum(sum, baselineSurvival, meanSum),
-    );
-  },
+  calculate: (p: CheckedPatient) => calculateLab(p, 'thai-ratio'),
 };
 
 export const thaiNonLab: ModelDef = {
