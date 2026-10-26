@@ -6,7 +6,8 @@
  *
  * Users sign in with their HOSxP account (officer table). The database settings page (#/settings)
  * is reachable without signing in, from this PC only.
- * The server listens on 127.0.0.1 only and rejects requests whose Host is not localhost.
+ * The server listens on 127.0.0.1 only (with --lan: on every interface, web app only) and answers /api
+ * only to connections from this PC addressed to localhost.
  *
  *   npm run dev   → this server on 127.0.0.1:4010, Vite on localhost:4009 proxies /api here
  *   npm start     → build the app and serve everything on localhost:4009
@@ -26,7 +27,8 @@ const argValue = (name: string) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const PORT = Number(argValue('--port') ?? process.env.PORT ?? 4010);
-const HOST = '127.0.0.1';
+/** --lan: also reachable by this PC's IP (web app only — see localOnly); default: this PC only */
+const HOST = args.includes('--lan') ? '0.0.0.0' : '127.0.0.1';
 const SERVE_STATIC = args.includes('--serve-static');
 
 let db: Db | null = null;
@@ -88,14 +90,22 @@ const handle =
     }
   };
 
+/**
+ * The data API (direct database, settings, login) is for this PC only: the connection must come from loopback
+ * (the real socket address — a Host header can be faked) and be addressed to localhost (blocks DNS rebinding).
+ * With --lan the web app itself is also served to the network, for HOSxP XE opening it by IP (BMS mode,
+ * which reads data through the BMS API, not through this server).
+ */
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 function localOnly(req: Request, res: Response, next: NextFunction) {
-  if (req.hostname === 'localhost' || req.hostname === '127.0.0.1') return next();
-  res.status(403).json({ success: false, message: 'เปิดได้จากเครื่องนี้ (localhost) เท่านั้น' });
+  const fromThisPc = LOOPBACK.has(req.socket.remoteAddress ?? '');
+  if (fromThisPc && (req.hostname === 'localhost' || req.hostname === '127.0.0.1')) return next();
+  res.status(403).json({ success: false, message: 'เปิดได้จากเครื่องนี้ (localhost) เท่านั้น — จากเครื่องอื่นให้เปิดผ่าน HOSxP XE' });
 }
 
 const app = express();
 app.disable('x-powered-by');
-app.use(localOnly);
+app.use('/api', localOnly);
 app.use(express.json({ limit: '20kb' }));
 
 app.get('/api/health', async (req, res) => {

@@ -1,6 +1,7 @@
 ' CVD Risk Calculator - starts the local server hidden (no command prompt) and opens the app in its own window.
 ' Installed next to: runtime\cvdrisk-server.exe (Node.js), server.cjs, web\ (built app), cvd.ico.
 ' Settings (config.json) and the server log live in %APPDATA%\CVD Risk Calculator, so reinstalling keeps them.
+' --lan: HOSxP XE may open the app by this PC's IP (http://<ip>:4009/?bms-session-id=...); the data API stays local-only.
 Option Explicit
 
 Const PORT = 4009
@@ -30,7 +31,7 @@ If Not ServerUp() Then
   env("CV_CONFIG") = dataDir & "\config.json"
   sh.CurrentDirectory = appDir
   ' window style 0 = hidden; the server keeps running after the window is closed (stopped by the uninstaller)
-  sh.Run "cmd /c """"" & appDir & "\runtime\cvdrisk-server.exe"" ""server.cjs"" --serve-static --static-dir web --port " & PORT & _
+  sh.Run "cmd /c """"" & appDir & "\runtime\cvdrisk-server.exe"" ""server.cjs"" --serve-static --static-dir web --lan --port " & PORT & _
          " >> """ & dataDir & "\server.log"" 2>&1""", 0, False
   For i = 1 To 60
     WScript.Sleep 500
