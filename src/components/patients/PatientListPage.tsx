@@ -197,7 +197,7 @@ export function PatientListPage() {
     }
     const headers = [
       'คัดกรอง CVD', 'ผลการประเมิน', 'วันที่มา', 'HN', 'ชื่อ - สกุล',
-      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว', 'ส่วนสูง', 'สูบบุหรี่', 'เบาหวาน', 'อายุ', 'เพศ', 'ความดันโลหิต SBP',
+      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว', 'ส่วนสูง', 'สูบบุหรี่', 'เบาหวาน', 'อายุ', 'เพศ', 'ความดัน',
       'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'รายละเอียด DiagText', 'แผนก', 'ห้องตรวจ', 'สิทธิ',
     ];
     const val = (v?: { value: number }) => (v ? Math.round(v.value * 10) / 10 : '');
@@ -399,7 +399,7 @@ export function PatientListPage() {
                 <SortTh k="dm" sort={sort} onSort={sortBy}>เบาหวาน</SortTh>
                 <SortTh k="age" sort={sort} onSort={sortBy}>อายุ</SortTh>
                 <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ</SortTh>
-                <SortTh k="sbp" sort={sort} onSort={sortBy}>ความดันโลหิต SBP</SortTh>
+                <SortTh k="sbp" sort={sort} onSort={sortBy}>ความดัน</SortTh>
                 <SortTh k="risk" sort={sort} onSort={sortBy}>ปัจจัยเสี่ยง</SortTh>
                 <SortTh k="comorbid" sort={sort} onSort={sortBy}>โรคร่วม/ภาวะเสี่ยง</SortTh>
                 <SortTh k="pdx" sort={sort} onSort={sortBy}>PDX</SortTh>
