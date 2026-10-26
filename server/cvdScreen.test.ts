@@ -18,9 +18,10 @@ describe('opdscreen_cvd values', () => {
     const low = thaiResult({ ...base, age: '36', sbp: '110', dm: false, tc: '150', gender: 'female' });
     expect(low.typeId).toBe(1);
   });
-  it('refuses incomplete or out-of-range data', () => {
+  it('refuses incomplete or implausible data, but not ages outside the formula range', () => {
     expect(() => thaiResult({ ...base })).toThrow(/ไม่ครบ/);
-    expect(() => thaiResult({ ...base, age: '80', tc: '200' })).toThrow();
+    expect(() => thaiResult({ ...base, age: '150', tc: '200' })).toThrow();
+    expect(thaiResult({ ...base, age: '80', tc: '200' }).risk).toBeGreaterThan(0);
   });
 });
 

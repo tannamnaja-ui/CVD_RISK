@@ -90,7 +90,7 @@ export interface NumericRule {
 
 /** Plausibility ranges for input; model-specific limits are handled by each engine. */
 export const NUMERIC_RULES: Record<NumericField, NumericRule> = {
-  age: { label: 'อายุ', short: 'อายุ', min: 18, max: 100, unit: 'ปี', integer: true },
+  age: { label: 'อายุ', short: 'อายุ', min: 1, max: 120, unit: 'ปี', integer: true },
   sbp: { label: 'ความดันโลหิตตัวบน', short: 'SBP', min: 70, max: 250, unit: 'mmHg' },
   tc: { label: 'Total Cholesterol', short: 'TC', min: 50, max: 500, unit: 'mg/dL' },
   hdl: { label: 'HDL Cholesterol', short: 'HDL', min: 10, max: 150, unit: 'mg/dL' },
@@ -147,7 +147,7 @@ export function toPatient(values: FormValues): PatientData {
   };
 }
 
-/** Errors for the selected model: required-but-missing, out-of-plausible-range, and model age range. */
+/** Errors for the selected model: required-but-missing and out-of-plausible-range. */
 export function validateForModel(values: FormValues, model: ModelDef): FormErrors {
   const errors: FormErrors = {};
   const patient = toPatient(values);
@@ -159,12 +159,7 @@ export function validateForModel(values: FormValues, model: ModelDef): FormError
     else if (values[f].trim() === '' && model.required(patient).includes(f)) errors[f] = `กรุณากรอก${NUMERIC_RULES[f].label}`;
   }
 
-  if (!errors.age && patient.age !== undefined) {
-    const [min, max] = model.ageRange;
-    if (patient.age < min || patient.age > max) {
-      errors.age = max >= 100 ? `${model.shortName} ใช้ได้กับอายุ ${min} ปีขึ้นไป` : `${model.shortName} ใช้ได้กับอายุ ${min}–${max} ปี`;
-    }
-  }
+  // no model age-range error: every model calculates with the real age (assess adds a note outside its range)
 
   if (!values.gender) errors.gender = 'กรุณาเลือกเพศ';
   return errors;

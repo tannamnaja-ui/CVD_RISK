@@ -17,6 +17,12 @@ function StatusCell({ row }: { row: Assessment }) {
       <>
         <td className="compare__risk" data-label="ความเสี่ยง 10 ปี">
           <strong style={{ color: tone.text }}>{display}%</strong>
+          {row.outsideAge && (
+            <span className="compare__outside" title={row.outsideAge}>
+              {' '}
+              * นอกช่วงอายุของสูตร
+            </span>
+          )}
         </td>
         <td data-label="ระดับ">
           <span className="badge badge--sm" style={{ ['--level-color' as string]: tone.color, ['--level-on' as string]: tone.on }}>
@@ -27,10 +33,7 @@ function StatusCell({ row }: { row: Assessment }) {
       </>
     );
   }
-  const message =
-    row.status === 'missing'
-      ? `ข้อมูลไม่ครบ: ${row.fields.map((f) => NUMERIC_RULES[f].short).join(', ')}`
-      : `ไม่อยู่ในช่วงอายุ (${row.model.ageRange[1] >= 100 ? `${row.model.ageRange[0]}+` : row.model.ageRange.join('–')} ปี)`;
+  const message = `ข้อมูลไม่ครบ: ${row.fields.map((f) => NUMERIC_RULES[f].short).join(', ')}`;
   return (
     <td colSpan={2} className="compare__na" data-label="ผล">
       {message}

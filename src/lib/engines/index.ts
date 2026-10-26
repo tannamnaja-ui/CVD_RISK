@@ -55,21 +55,23 @@ export function modelFor(engine: EngineId, thaiMode: ThaiMode): ModelDef {
 }
 
 export type Assessment =
-  | { status: 'ok'; model: ModelDef; result: ModelResult }
-  | { status: 'missing'; model: ModelDef; fields: NumericField[] }
-  | { status: 'age'; model: ModelDef; reason: string };
+  /** outsideAge: the patient's age is outside the range the model was developed for (calculated anyway, with a note) */
+  | { status: 'ok'; model: ModelDef; result: ModelResult; outsideAge?: string }
+  | { status: 'missing'; model: ModelDef; fields: NumericField[] };
 
 /** Check a model's required inputs and age range, then calculate. */
 export function assess(model: ModelDef, patient: PatientData): Assessment {
   const missing = model.required(patient).filter((f) => patient[f] === undefined);
   if (missing.length > 0) return { status: 'missing', model, fields: missing };
 
+  // every model calculates with the patient's real age; outside its development range the result carries a note
+  const result = model.calculate(patient as CheckedPatient);
   const [minAge, maxAge] = model.ageRange;
   const age = patient.age!;
   if (age < minAge || age > maxAge) {
     const range = maxAge >= 100 ? `${minAge} ปีขึ้นไป` : `${minAge}–${maxAge} ปี`;
-    return { status: 'age', model, reason: `${model.name} ใช้ได้กับอายุ ${range}` };
+    const outsideAge = `อายุ ${age} ปี อยู่นอกช่วงอายุที่ใช้พัฒนาสูตรนี้ (${range}) — ผลเป็นการประมาณ ควรใช้ด้วยความระมัดระวัง`;
+    return { status: 'ok', model, result: { ...result, notes: [outsideAge, ...result.notes] }, outsideAge };
   }
-
-  return { status: 'ok', model, result: model.calculate(patient as CheckedPatient) };
+  return { status: 'ok', model, result };
 }

@@ -130,10 +130,17 @@ describe('formula documentation', () => {
 });
 
 describe('assess / validation', () => {
-  it('reports missing fields and age range per model', () => {
+  it('reports missing fields, and calculates outside the age range with a note', () => {
     const p = { ...base, age: 30, sbp: 120 };
     expect(assess(MODELS.ascvd, p).status).toBe('missing');
-    expect(assess(MODELS.who, p).status).toBe('age');
+    const who = assess(MODELS.who, p);
+    expect(who.status).toBe('ok');
+    if (who.status === 'ok') {
+      expect(who.outsideAge).toContain('อายุ 30 ปี');
+      expect(who.result.notes[0]).toBe(who.outsideAge);
+    }
+    const thai = assess(MODELS['thai-lab'], { ...p, age: 78, tc: 220 });
+    expect(thai.status === 'ok' && thai.outsideAge).toBeTruthy();
     expect(MODEL_ORDER).toHaveLength(8);
   });
 

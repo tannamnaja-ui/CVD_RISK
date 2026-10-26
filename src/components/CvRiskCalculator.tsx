@@ -270,14 +270,14 @@ export function CvRiskCalculator({ initialValues, vn, patient, onSaved }: CvRisk
           <EngineSelector value={engine} hidden={hidden} onChange={(e) => switchTo(e, values)} onShowFormula={setFormulaEngine} />
           {isThaiEngine(engine) && <ThaiFormulaInfoBox auto={values.thaiFormula === 'auto'} used={values.thaiMode} />}
           <p className="panel__note">
-            <strong>{model.name}</strong> · {model.outcome} · อายุ {ageRangeText}
+            <strong>{model.name}</strong> · {model.outcome} · พัฒนาจากข้อมูลอายุ {ageRangeText}
           </p>
         </Panel>
 
         <div className="panel-row">
           <Panel icon={<UserIcon size={18} />} title="ข้อมูลผู้ป่วย" en="Patient Data" tone="blue">
             <div className="fields">
-              {numberField('age', 'อายุ (Age)', { hint: `สูตรนี้รองรับ ${ageRangeText}` })}
+              {numberField('age', 'อายุ (Age)')}
               <div className="field">
                 <span className="field__label">เพศ (Sex)</span>
                 {sexFromHosxp ? (

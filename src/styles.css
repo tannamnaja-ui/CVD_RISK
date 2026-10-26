@@ -4873,3 +4873,11 @@ p {
 .ptable td {
   border-bottom-color: #eef3f2;
 }
+
+/* compare table: calculated outside the model's age range */
+.compare__outside {
+  color: #9a6700;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
