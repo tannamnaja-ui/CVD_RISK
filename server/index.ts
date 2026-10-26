@@ -260,9 +260,10 @@ app.use('/api', (_req, res) => {
 });
 
 if (SERVE_STATIC) {
-  const dist = path.resolve('dist');
-  app.use(express.static(dist));
-  app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+  // the built web app: build/web in the project, or --static-dir (the installed app passes its own folder)
+  const web = path.resolve(argValue('--static-dir') ?? 'build/web');
+  app.use(express.static(web));
+  app.get('*', (_req, res) => res.sendFile(path.join(web, 'index.html')));
 }
 
 app.listen(PORT, HOST, () => {

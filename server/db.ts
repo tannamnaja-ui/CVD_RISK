@@ -44,6 +44,7 @@ export function readConfig(): DbConfig | null {
 
 /** Write via a temp file + rename so a crash never leaves a half-written config.json. */
 export function writeConfig(cfg: DbConfig): void {
+  fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true }); // the installed app keeps it under %APPDATA%
   const tmp = `${CONFIG_FILE}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(cfg, null, 2) + '\n', 'utf8');
   fs.renameSync(tmp, CONFIG_FILE);

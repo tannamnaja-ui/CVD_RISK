@@ -3,3 +3,6 @@ dist
 # database credentials — never commit
 config.json
 logs
+build
+installer/.work
+installer/cache
