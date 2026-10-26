@@ -3,6 +3,15 @@ import { PrivacyBlockedError, useHosxp } from '../../hooks/useHosxp';
 import { navigate } from '../../hooks/useHashRoute';
 import { exportSheet } from '../../lib/excel';
 import type { FollowUp, FollowUpListId, FollowUpRow } from '../../lib/followUp';
+import {
+  APPOINTMENT_GRACE_DAYS,
+  BP_TARGET,
+  CONTROL_LOOKBACK_DAYS,
+  HIGH_RISK,
+  LDL_TARGET,
+  RESCREEN_DAYS,
+  STATIN_LOOKBACK_DAYS,
+} from '../../lib/appointments';
 import { CVD_LEVEL_COLORS, type PatientRow } from '../../lib/hosxp/patients';
 import { thaiDate } from '../../lib/hosxp/vitals';
 import { AlertTriangleIcon, CheckIcon, EraserIcon, FilterIcon, InfoIcon, KeyIcon, ResetIcon, SheetIcon } from '../Icons';
@@ -46,6 +55,39 @@ const TABS: { id: FollowUpListId; label: string; reason: string; rule: (r: Follo
 
 const sexLabel = (s: string) => (s === '1' ? 'ชาย' : s === '2' ? 'หญิง' : '–');
 
+/** What each worklist checks, and where in HOSxP the data comes from (shown by its "เงื่อนไข" button). */
+const CONDITIONS: Record<FollowUpListId, { criteria: string[]; data: string[]; notes?: string[] }> = {
+  assessed: {
+    criteria: ['ผู้ป่วยที่มีผล Thai CV Risk บันทึกไว้อย่างน้อย 1 ครั้ง', 'แสดงผลครั้งล่าสุดของแต่ละคน เรียงจากคนที่ประเมินล่าสุด'],
+    data: ['opdscreen_cvd — ผลการประเมิน (risk_score) และระดับ (cvd_risk_score_type_id)', 'ovst — วันที่มารับบริการของ visit ที่บันทึก'],
+  },
+  noStatin: {
+    criteria: [`ผลประเมินครั้งล่าสุด ≥ ${HIGH_RISK}% (ระดับ 3–5: สูง, สูงมาก, อันตราย)`, `และไม่มีการจ่ายยากลุ่ม statin ภายใน ${STATIN_LOOKBACK_DAYS} วันที่ผ่านมา`],
+    data: ['opdscreen_cvd — ผลประเมินล่าสุด', 'opitemrece + drugitems — รายการยาที่จ่าย โดยดูชื่อยาที่มีคำว่า "statin"'],
+    notes: ['ยาที่ชื่อไม่มีคำว่า statin (เช่น ใช้ชื่อการค้าอย่างเดียว) จะไม่ถูกนับ — ควรตั้งชื่อยาใน drugitems ให้มีชื่อสามัญ'],
+  },
+  rescreen: {
+    criteria: [`ประเมิน Thai CV Risk ครั้งล่าสุดผ่านมาแล้ว ${RESCREEN_DAYS} วันขึ้นไป (ครบ 1 ปี) และยังไม่ได้ประเมินซ้ำ`],
+    data: ['opdscreen_cvd + ovst — วันที่มารับบริการของ visit ที่ประเมินครั้งล่าสุด'],
+  },
+  uncontrolled: {
+    criteria: [
+      `ความดันครั้งล่าสุดภายใน ${CONTROL_LOOKBACK_DAYS} วัน: ตัวบน ≥ ${BP_TARGET.sbp} หรือ ตัวล่าง ≥ ${BP_TARGET.dbp} mmHg`,
+      `หรือ ผลประเมินล่าสุด ≥ ${HIGH_RISK}% และ LDL ครั้งล่าสุดภายใน ${CONTROL_LOOKBACK_DAYS} วัน ≥ ${LDL_TARGET} mg/dL`,
+    ],
+    data: ['opdscreen — ความดัน (bps / bpd) จากการซักประวัติ', 'lab_head + lab_order + lab_items — ผลแล็บที่ชื่อรายการมีคำว่า "LDL"'],
+  },
+  missed: {
+    criteria: [
+      `ผลประเมินล่าสุด ≥ ${HIGH_RISK}% (กลุ่มเสี่ยงสูง)`,
+      `นัดครั้งล่าสุดในตารางนัด (ภายใน 365 วัน) เลยวันนัดมาแล้วเกิน ${APPOINTMENT_GRACE_DAYS} วัน`,
+      `ไม่ได้มาตามนัด: HOSxP ไม่ได้ผูก visit กับนัดนั้น และไม่มีการมารับบริการในช่วง ±${APPOINTMENT_GRACE_DAYS} วันของวันนัด`,
+      'และยังไม่ได้กลับมารับบริการอีกหลังวันนัด',
+    ],
+    data: ['oapp — วันนัด (nextdate), คลินิก และ visit ที่ผูกกับนัด (visit_vn)', 'ovst — วันที่มารับบริการ'],
+  },
+};
+
 /**
  * Worklists of screened patients who need action. Direct mode: names straight away.
  * Opened from HOSxP XE (BMS API): the lists first, names / phones / addresses after approval in HOSxP.
@@ -58,6 +100,8 @@ export function FollowUpPage() {
   const [tab, setTab] = useState<FollowUpListId>('assessed');
   const [search, setSearch] = useState('');
   const [historyOf, setHistoryOf] = useState<FollowUpRow | null>(null);
+  /** the list whose "เงื่อนไข" dialog is open */
+  const [conditionsOf, setConditionsOf] = useState<FollowUpListId | null>(null);
   /** BMS mode: contacts query blocked by the API privacy protection, waiting for approval in HOSxP */
   const [approval, setApproval] = useState<{ requestId: string; sql: string; notYet?: boolean } | null>(null);
   const [contactsLoading, setContactsLoading] = useState(false);
@@ -152,10 +196,16 @@ export function FollowUpPage() {
         <div className="plist__toolbar">
           <div className="followup-tabs" role="tablist" aria-label="รายชื่อที่ต้องติดตาม">
             {TABS.map((t) => (
-              <button key={t.id} type="button" role="tab" aria-selected={t.id === tab} className={`followup-tab${t.id === tab ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>
-                {t.label}
-                <span className="followup-tab__count">{data ? data.lists[t.id].length : '…'}</span>
-              </button>
+              // the tab and its "เงื่อนไข" button are siblings — a button may not contain another button
+              <span key={t.id} className={`followup-tab-wrap${t.id === tab ? ' is-active' : ''}`}>
+                <button type="button" role="tab" aria-selected={t.id === tab} className={`followup-tab${t.id === tab ? ' is-active' : ''}`} onClick={() => setTab(t.id)}>
+                  {t.label}
+                  <span className="followup-tab__count">{data ? data.lists[t.id].length : '…'}</span>
+                </button>
+                <button type="button" className="followup-tab__info" onClick={() => setConditionsOf(t.id)} title={`ดูเงื่อนไขของรายการ "${t.label}"`}>
+                  <InfoIcon size={14} /> เงื่อนไข
+                </button>
+              </span>
             ))}
           </div>
           <div className="plist__row">
@@ -306,6 +356,56 @@ export function FollowUpPage() {
         size="lg"
       >
         {historyOf && <CvdHistory vn={historyOf.screenVn} reload={0} />}
+      </Modal>
+
+      <Modal
+        open={conditionsOf !== null}
+        onClose={() => setConditionsOf(null)}
+        title={conditionsOf ? `เงื่อนไข: ${TABS.find((t) => t.id === conditionsOf)!.label}` : ''}
+        subtitle="ใช้กับผู้ป่วยที่มีผล Thai CV Risk บันทึกไว้ (opdscreen_cvd) · ไม่รวมผู้เสียชีวิต · ข้อมูล ณ วันนี้"
+      >
+        {conditionsOf && (
+          <div className="criteria">
+            <div className="criteria__table-wrap">
+              <table className="criteria__table">
+                <tbody>
+                  <tr>
+                    <th scope="row">เกณฑ์</th>
+                    <td>
+                      <ul className="followup-cond">
+                        {CONDITIONS[conditionsOf].criteria.map((c) => (
+                          <li key={c}>{c}</li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th scope="row">ข้อมูลจาก HOSxP</th>
+                    <td>
+                      <ul className="followup-cond">
+                        {CONDITIONS[conditionsOf].data.map((c) => (
+                          <li key={c}>{c}</li>
+                        ))}
+                      </ul>
+                    </td>
+                  </tr>
+                  {CONDITIONS[conditionsOf].notes && (
+                    <tr>
+                      <th scope="row">หมายเหตุ</th>
+                      <td>
+                        <ul className="followup-cond">
+                          {CONDITIONS[conditionsOf].notes!.map((c) => (
+                            <li key={c}>{c}</li>
+                          ))}
+                        </ul>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -4881,3 +4881,36 @@ p {
   font-weight: 600;
   white-space: nowrap;
 }
+
+/* follow-up tabs: each tab with its "เงื่อนไข" button */
+.followup-tab-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.followup-tab__info {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #075985;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.followup-tab__info:hover {
+  background: #e0f2fe;
+}
+
+.followup-cond {
+  margin: 0;
+  padding-left: 1.1em;
+  display: grid;
+  gap: 4px;
+}
