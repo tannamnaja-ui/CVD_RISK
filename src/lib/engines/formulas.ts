@@ -68,7 +68,7 @@ const thai: FormulaInfo = {
   engine: 'thai',
   title: 'Thai CV Risk Score',
   summary:
-    'ประเมินความเสี่ยงโรคหัวใจและหลอดเลือดระยะ 10 ปีสำหรับคนไทย อายุ 35–70 ปี มี 3 สูตรให้เลือกในหน้าคำนวณ (หรือเลือกอัตโนมัติ: มี TC และ HDL → TC/HDL Ratio, มีแค่ TC → Total Cholesterol, ไม่มีผลเลือด → Non-Lab) — ทั้ง 3 สูตรยังไม่ได้ยืนยันกับแหล่งข้อมูลทางการ',
+    'ประเมินความเสี่ยงโรคหัวใจและหลอดเลือดระยะ 10 ปีสำหรับคนไทย อายุ 35–70 ปี มี 3 สูตรให้เลือกในหน้าคำนวณ (หรือเลือกอัตโนมัติ: มี TC และ HDL → TC/HDL Ratio, มีแค่ TC → Total Cholesterol, ไม่มีผลเลือด → Non-Lab) — สูตร Total Cholesterol และ Non-Lab เป็นสมการทางการ ส่วนสูตร TC/HDL ยังไม่ได้ยืนยัน',
   sections: [
     {
       heading: `สูตรที่ 1 — ${THAI_FORMULAS.ratio.name}`,
@@ -92,7 +92,8 @@ const thai: FormulaInfo = {
       text: [
         'ที่มา: Thai CV risk Score, โครงการศึกษาระยะยาวเพื่อหาอิทธิพลของปัจจัยเสี่ยงต่อการเกิดโรคหัวใจและหลอดเลือด 2528–2558 · สำนักโรคไม่ติดต่อ กรมควบคุมโรค กระทรวงสาธารณสุข',
         'ออกแบบโดย นางจารุมน ลัคนาวิวัฒน์ โรงพยาบาลห้วยยอด · จัดพิมพ์โดย ศูนย์หัวใจ โรงพยาบาลตรังร่วมกับงานโรคไม่ติดต่อ สำนักงานสาธารณสุขจังหวัดตรัง (ตามที่พิมพ์ในตาราง)',
-        'ตารางนี้ใช้ Total Cholesterol อย่างเดียว (ไม่ใช้ HDL) — ใช้ตรวจสอบผลของสูตรที่ 2 ได้โดยตรง; เมื่อเทียบแล้วสูตรที่ 2 ในโปรแกรมให้ค่าต่ำกว่าตารางในกลุ่มอายุมาก/ความดันสูง/เบาหวาน',
+        'ตารางนี้ใช้ Total Cholesterol อย่างเดียว (ไม่ใช้ HDL) และทำจากสูตรที่ 2 — แต่ละช่องคือช่วงของอายุ/ความดัน/โคเลสเตอรอล จึงให้สีเดียวทั้งช่วง ผลจากสูตรที่ใช้ค่าจริงอาจสูงหรือต่ำกว่าสีในตารางได้เมื่อค่าอยู่ปลายช่วง',
+        'สีเหลือง 10–<20% (ปานกลาง) กับสีเหลืองเข้ม 20–<30% (สูง) ในตารางคล้ายกันมาก ควรดูตัวเลข % ประกอบ',
       ],
       image: {
         src: 'thai-cv-color-chart-tc.jpg',
@@ -113,7 +114,8 @@ const thai: FormulaInfo = {
     { heading: 'เกณฑ์การแปลผล', table: categoryTable(THAI_CATEGORIES) },
   ],
   sources: [
-    { label: 'ตัวอย่างงานวิจัยที่ใช้ Thai CV Risk Score (ยังไม่ใช่แหล่งสัมประสิทธิ์ทางการ)', url: 'https://he01.tci-thaijo.org/index.php/BMJ/article/view/266373' },
+    { label: 'สมการ Thai CV Risk Score (ไม่ใช้ผลเลือด) — คู่มือคะแนน เขตสุขภาพที่ 10 กระทรวงสาธารณสุข', url: 'https://terreport.healthregion10.moph.go.th/scoreguide.php' },
+    { label: 'ตัวอย่างงานวิจัยที่ใช้ Thai CV Risk Score', url: 'https://he01.tci-thaijo.org/index.php/BMJ/article/view/266373' },
     { label: 'Rama-EGAT Score — Mahidol University (ที่มาของ cohort คนไทย)', url: 'https://murex.mahidol.ac.th/en/publications/risk-of-cardiovascular-events-predicted-by-the-rama-egat-score-am/' },
   ],
 };

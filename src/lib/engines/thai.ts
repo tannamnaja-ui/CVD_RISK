@@ -1,6 +1,9 @@
 import { fmt, pointResult, toPercent, type CheckedPatient, type ModelDef, type RiskCategory, type ThaiMode } from './types';
 
-/** Thai CV Risk Score — coefficients as specified for this project. */
+/**
+ * Thai CV Risk Score. lab / nonlab: the official equations (P FullScore = 1 − 0.978296^exp(FullScore − c));
+ * ratio: as supplied for this project, not verified.
+ */
 export const THAI_COEFFICIENTS = {
   /** Ramathibodi (EGAT study) model with the TC/HDL-C ratio — coefficients as supplied for this project. */
   ratio: {
@@ -8,15 +11,17 @@ export const THAI_COEFFICIENTS = {
     baselineSurvival: 0.9592,
     meanSum: 7.7479,
   },
+  /** Official Thai CV Risk Score with Total Cholesterol (sex: male 1, female 0) — see THAI_FORMULAS.lab.source */
   lab: {
-    coef: { age: 0.07, male: 0.584, dm: 0.49, smoke: 0.443, sbp: 0.014, tc: 0.004 },
-    baselineSurvival: 0.9592,
-    meanSum: 7.7479,
+    coef: { age: 0.08183, male: 0.39499, dm: 0.69974, smoke: 0.41916, sbp: 0.02084, tc: 0.00212 },
+    baselineSurvival: 0.978296,
+    meanSum: 7.04423,
   },
+  /** Official Thai CV Risk Score without lab values (waist/height) — see THAI_FORMULAS.nonlab.source */
   nonlab: {
-    coef: { age: 0.074, male: 0.448, dm: 0.596, smoke: 0.444, sbp: 0.017, whtr: 1.834 },
-    baselineSurvival: 0.9598,
-    meanSum: 4.7937,
+    coef: { age: 0.079, male: 0.128, dm: 0.58454, smoke: 0.459, sbp: 0.019350987, whtr: 3.512566 },
+    baselineSurvival: 0.978296,
+    meanSum: 7.720484,
   },
 } as const;
 
@@ -40,16 +45,17 @@ export const THAI_FORMULAS: Record<ThaiMode, ThaiFormulaInfo> = {
   lab: {
     name: 'สูตร Total Cholesterol',
     needs: 'ต้องมี Total Cholesterol',
-    source: 'สัมประสิทธิ์ตามข้อกำหนดเริ่มต้นของโครงการ',
-    verified: false,
-    caution: 'เทียบกับตารางสี Thai CV Risk ของกรมควบคุมโรค (ฉบับทราบผลโคเลสเตอรอล) แล้วให้ค่าต่ำกว่าตารางในกลุ่มอายุมาก/ความดันสูง/เบาหวาน',
+    source:
+      'Thai CV Risk Score กรณีมีค่า Total Cholesterol ตามเอกสาร "การประเมิน Thai CV Risk Score จากข้อมูล 43 แฟ้ม" (สูตรเดียวกับที่ใช้ทำตารางสีของกรมควบคุมโรค)',
+    verified: true,
+    caution: 'ตารางสีให้สีเดียวต่อช่วงอายุ/ความดัน/โคเลสเตอรอล — ผลจากสูตรใช้ค่าจริงของผู้ป่วย จึงอาจต่างจากสีในตารางได้เมื่อค่าอยู่ปลายช่วง',
   },
   nonlab: {
     name: 'สูตร Non-Laboratory (WHtR)',
     needs: 'ต้องมีรอบเอวและส่วนสูง',
-    source: 'สัมประสิทธิ์ตามข้อกำหนดเริ่มต้นของโครงการ',
-    verified: false,
-    caution: 'ให้ค่าสูงกว่าสูตรที่ใช้ผลเลือดมาก — ค่าคงที่ 4.7937 น่าจะไม่ถูกต้อง',
+    source:
+      'Thai CV Risk Score กรณีไม่มีค่า Total Cholesterol ตามเอกสาร "การประเมิน Thai CV Risk Score จากข้อมูล 43 แฟ้ม" และหน้าคู่มือคะแนน เขตสุขภาพที่ 10 กระทรวงสาธารณสุข',
+    verified: true,
   },
 };
 

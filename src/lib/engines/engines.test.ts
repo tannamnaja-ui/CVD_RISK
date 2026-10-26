@@ -36,16 +36,25 @@ const patient = (p: Partial<PatientData>) => ({ ...base, ...p }) as CheckedPatie
 const risk = (id: keyof typeof MODELS, p: Partial<PatientData>) => MODELS[id].calculate(patient(p)).risk!;
 
 describe('Thai CV Risk Score', () => {
-  it('lab model matches a hand-computed value', () => {
-    // ΣβX = 0.07·50 + 0.584 + 0.443 + 0.014·140 + 0.004·220 = 7.367
-    const expected = (1 - Math.pow(0.9592, Math.exp(7.367 - 7.7479))) * 100;
+  it('lab model is the official equation (with Total Cholesterol)', () => {
+    // FullScore = 0.08183·50 + 0.39499 + 0.02084·140 + 0 + 0.00212·220 + 0.41916
+    const full = 0.08183 * 50 + 0.39499 + 0.02084 * 140 + 0.00212 * 220 + 0.41916;
+    const expected = (1 - Math.pow(0.978296, Math.exp(full - 7.04423))) * 100;
     expect(risk('thai-lab', { age: 50, smoke: true, sbp: 140, tc: 220 })).toBeCloseTo(expected, 8);
   });
 
-  it('non-lab model uses WHtR', () => {
-    const sum = 0.074 * 50 + 0.017 * 120 + 1.834 * 0.5;
-    const expected = (1 - Math.pow(0.9598, Math.exp(sum - 4.7937))) * 100;
+  it('non-lab model is the official equation (waist / height)', () => {
+    const full = 0.079 * 50 + 0.019350987 * 120 + 3.512566 * 0.5;
+    const expected = (1 - Math.pow(0.978296, Math.exp(full - 7.720484))) * 100;
     expect(risk('thai-nonlab', { gender: 'female', age: 50, sbp: 120, waist: 80, height: 160 })).toBeCloseTo(expected, 8);
+  });
+
+  it('colour chart 2 cell (DM, woman, smoker, 60–64, SBP 120–139, TC 240–279) is moderate at the band floor', () => {
+    const cell = { gender: 'female' as const, dm: true, smoke: true };
+    expect(risk('thai-lab', { ...cell, age: 60, sbp: 120, tc: 240 })).toBeGreaterThanOrEqual(10);
+    expect(risk('thai-lab', { ...cell, age: 60, sbp: 120, tc: 240 })).toBeLessThan(20);
+    // the same person's real values (64 y, SBP 135, TC 244) sit high in the cell: 26.5% (high)
+    expect(risk('thai-lab', { ...cell, age: 64, sbp: 135, tc: 244 })).toBeCloseTo(26.5, 1);
   });
 });
 
