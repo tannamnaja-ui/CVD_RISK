@@ -71,7 +71,18 @@ $vbs = [IO.File]::ReadAllText((Join-Path $src 'installer\launcher.vbs'), [Text.E
 Copy-Item (Join-Path $src 'installer\cvd.ico') $stage
 
 Step "Inno Setup -> $OutDir"
-New-Item -ItemType Directory -Force $OutDir | Out-Null
-Run $iscc @('/Q', "/DStage=$stage", "/DOutDir=$OutDir", "/DAppVersion=$version", (Join-Path $src 'installer\cvd-risk.iss'))
+# ISCC writes the icon into the .exe with EndUpdateResource, which fails on paths with non-ASCII characters
+# (e.g. "งาน") and when antivirus holds the new file — so compile into an ASCII temp folder, retry, then move it.
+$tmpOut = Join-Path ([IO.Path]::GetTempPath()) 'cvd-risk-setup-out'
+New-Item -ItemType Directory -Force $OutDir, $tmpOut | Out-Null
+$iss = Join-Path $src 'installer\cvd-risk.iss'
+for ($try = 1; ; $try++) {
+    & $iscc /Q "/DStage=$stage" "/DOutDir=$tmpOut" "/DAppVersion=$version" $iss
+    if ($LASTEXITCODE -eq 0) { break }
+    if ($try -ge 3) { throw "ISCC failed ($LASTEXITCODE)" }
+    Start-Sleep -Seconds 5
+}
 $setup = Join-Path $OutDir 'CVD_Risk_Calculator-Setup-Full.exe'
+Move-Item (Join-Path $tmpOut 'CVD_Risk_Calculator-Setup-Full.exe') $setup -Force
+Remove-Item $tmpOut -Recurse -Force
 Step ("done: {0} ({1:N1} MB)" -f $setup, ((Get-Item $setup).Length / 1MB))
