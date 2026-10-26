@@ -393,14 +393,14 @@ export function PatientListPage() {
                 <SortTh k="ptname" sort={sort} onSort={sortBy}>ชื่อ - สกุล</SortTh>
                 <SortTh k="tc" sort={sort} onSort={sortBy}>Total Cholesterol</SortTh>
                 <SortTh k="hdl" sort={sort} onSort={sortBy}>HDL Cholesterol</SortTh>
-                <SortTh k="waist" sort={sort} onSort={sortBy}>รอบเอว</SortTh>
-                <SortTh k="height" sort={sort} onSort={sortBy}>ส่วนสูง</SortTh>
-                <SortTh k="smoke" sort={sort} onSort={sortBy}>สูบบุหรี่</SortTh>
-                <SortTh k="dm" sort={sort} onSort={sortBy}>เบาหวาน</SortTh>
+                <SortTh k="waist" sort={sort} onSort={sortBy}><span className="th-nowrap">รอบเอว</span></SortTh>
+                <SortTh k="height" sort={sort} onSort={sortBy}><span className="th-nowrap">ส่วนสูง</span></SortTh>
+                <SortTh k="smoke" sort={sort} onSort={sortBy}><span className="th-nowrap">สูบบุหรี่</span></SortTh>
+                <SortTh k="dm" sort={sort} onSort={sortBy}><span className="th-nowrap">เบาหวาน</span></SortTh>
                 <SortTh k="age" sort={sort} onSort={sortBy}>อายุ</SortTh>
                 <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ</SortTh>
-                <SortTh k="sbp" sort={sort} onSort={sortBy}>ความดัน</SortTh>
-                <SortTh k="risk" sort={sort} onSort={sortBy}>ปัจจัยเสี่ยง</SortTh>
+                <SortTh k="sbp" sort={sort} onSort={sortBy}><span className="th-nowrap">ความดัน</span></SortTh>
+                <SortTh k="risk" sort={sort} onSort={sortBy}><span className="th-nowrap">ปัจจัยเสี่ยง</span></SortTh>
                 <SortTh k="comorbid" sort={sort} onSort={sortBy}>
                   {/* exactly two lines, as wide as "ภาวะเสี่ยง" */}
                   <span className="th-nowrap">
