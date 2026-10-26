@@ -4648,3 +4648,35 @@ p {
 .ptable td:last-child {
   border-right: 0;
 }
+
+/* columns only as wide as their content: the table no longer stretches to the page width,
+   long headings wrap onto two lines, and cell padding is tighter */
+.ptable {
+  width: auto;
+}
+
+.ptable th {
+  padding: 6px 8px;
+  vertical-align: bottom;
+}
+
+.ptable td {
+  padding: 6px 8px;
+}
+
+.ptable__sortable button {
+  padding: 6px 8px;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
+  max-width: 9.5em;
+}
+
+.dxtext-clamp {
+  max-width: 320px;
+  min-width: 160px;
+}
+
+.ptable th.ptable__sortable {
+  padding: 0; /* the button inside carries the padding */
+}
