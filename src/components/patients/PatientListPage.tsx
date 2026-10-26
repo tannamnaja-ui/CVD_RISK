@@ -197,7 +197,7 @@ export function PatientListPage() {
     }
     const headers = [
       'คัดกรอง CVD', 'ผลการประเมิน', 'วันที่มา', 'HN', 'ชื่อ - สกุล',
-      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว (Waist)', 'ส่วนสูง (Height)', 'สูบบุหรี่', 'เป็นโรคเบาหวาน', 'อายุ (Age)', 'เพศ (Sex)', 'ความดันโลหิต SBP',
+      'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว', 'ส่วนสูง', 'สูบบุหรี่', 'เป็นโรคเบาหวาน', 'อายุ', 'เพศ', 'ความดันโลหิต SBP',
       'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'รายละเอียด DiagText', 'แผนก', 'ห้องตรวจ', 'สิทธิ',
     ];
     const val = (v?: { value: number }) => (v ? Math.round(v.value * 10) / 10 : '');
@@ -393,12 +393,12 @@ export function PatientListPage() {
                 <SortTh k="ptname" sort={sort} onSort={sortBy}>ชื่อ - สกุล</SortTh>
                 <SortTh k="tc" sort={sort} onSort={sortBy}>Total Cholesterol</SortTh>
                 <SortTh k="hdl" sort={sort} onSort={sortBy}>HDL Cholesterol</SortTh>
-                <SortTh k="waist" sort={sort} onSort={sortBy}>รอบเอว (Waist)</SortTh>
-                <SortTh k="height" sort={sort} onSort={sortBy}>ส่วนสูง (Height)</SortTh>
+                <SortTh k="waist" sort={sort} onSort={sortBy}>รอบเอว</SortTh>
+                <SortTh k="height" sort={sort} onSort={sortBy}>ส่วนสูง</SortTh>
                 <SortTh k="smoke" sort={sort} onSort={sortBy}>สูบบุหรี่</SortTh>
                 <SortTh k="dm" sort={sort} onSort={sortBy}>เป็นโรคเบาหวาน</SortTh>
-                <SortTh k="age" sort={sort} onSort={sortBy}>อายุ (Age)</SortTh>
-                <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ (Sex)</SortTh>
+                <SortTh k="age" sort={sort} onSort={sortBy}>อายุ</SortTh>
+                <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ</SortTh>
                 <SortTh k="sbp" sort={sort} onSort={sortBy}>ความดันโลหิต SBP</SortTh>
                 <SortTh k="risk" sort={sort} onSort={sortBy}>ปัจจัยเสี่ยง</SortTh>
                 <SortTh k="comorbid" sort={sort} onSort={sortBy}>โรคร่วม/ภาวะเสี่ยง</SortTh>
