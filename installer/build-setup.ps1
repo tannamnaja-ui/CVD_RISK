@@ -85,4 +85,6 @@ for ($try = 1; ; $try++) {
 $setup = Join-Path $OutDir 'CVD_Risk_Calculator-Setup-Full.exe'
 Move-Item (Join-Path $tmpOut 'CVD_Risk_Calculator-Setup-Full.exe') $setup -Force
 Remove-Item $tmpOut -Recurse -Force
+# the clone (with its node_modules) is only needed for this build; the Node.js download stays in cache\
+Remove-Item $work -Recurse -Force
 Step ("done: {0} ({1:N1} MB)" -f $setup, ((Get-Item $setup).Length / 1MB))
