@@ -94,8 +94,6 @@ export function AssessPage({ vn }: { vn: string | null }) {
   const [patient] = useState(() => (vn ? loadSelected(vn) : null));
   const [initial, setInitial] = useState<Partial<FormValues> | null>(vn ? null : {});
   const [vitalsNote, setVitalsNote] = useState<ReactNode>(null);
-  /** bumped after a save so the history reloads */
-  const [savedCount, setSavedCount] = useState(0);
   const sex = genderOf(patient?.sex);
   const summaryPatient: SummaryPatient | undefined = vn
     ? {
@@ -200,9 +198,10 @@ export function AssessPage({ vn }: { vn: string | null }) {
           <span className="spinner" /> กำลังดึงข้อมูลผู้ป่วย...
         </div>
       ) : (
-        <CvRiskCalculator key={vn ?? 'blank'} initialValues={initial} vn={vn ?? undefined} patient={summaryPatient} onSaved={() => setSavedCount((n) => n + 1)} />
+        // after a successful save, back to the patient list (it refreshes the screening status on return)
+        <CvRiskCalculator key={vn ?? 'blank'} initialValues={initial} vn={vn ?? undefined} patient={summaryPatient} onSaved={() => navigate('/')} />
       )}
-      {vn && <CvdHistory vn={vn} reload={savedCount} />}
+      {vn && <CvdHistory vn={vn} reload={0} />}
     </div>
   );
 }
