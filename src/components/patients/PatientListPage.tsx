@@ -15,7 +15,6 @@ import {
   applyPatientFilters,
   dateOf,
   depOption,
-  hasDxText,
   knownDepCodes,
   todayLocal,
   uniqueSorted,
@@ -198,7 +197,7 @@ export function PatientListPage() {
     const headers = [
       'คัดกรอง CVD', 'ผลการประเมิน', 'วันที่มา', 'HN', 'ชื่อ - สกุล',
       'Total Cholesterol', 'HDL Cholesterol', 'รอบเอว', 'ส่วนสูง', 'สูบบุหรี่', 'เบาหวาน', 'อายุ(ปี)', 'เพศ', 'ความดัน',
-      'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'รายละเอียด DiagText', 'แผนก', 'ห้องตรวจ', 'สิทธิ',
+      'ปัจจัยเสี่ยง', 'โรคร่วม/ภาวะเสี่ยง', 'PDX', 'แพทย์ผู้ตรวจ', 'แผนก', 'ห้องตรวจ', 'สิทธิ',
     ];
     const val = (v?: { value: number }) => (v ? Math.round(v.value * 10) / 10 : '');
     const data = rows.map((p) => [
@@ -223,7 +222,6 @@ export function PatientListPage() {
       (p.comorbid ?? []).map((c) => COMORBID_LABELS[c].label).join(', '),
       p.pdx ?? '',
       p.doctor ?? '',
-      p.dx_text_list ?? '',
       p.spclty ?? '',
       p.department ?? '',
       p.pttype ?? '',
@@ -411,7 +409,6 @@ export function PatientListPage() {
                 </SortTh>
                 <SortTh k="pdx" sort={sort} onSort={sortBy}>PDX</SortTh>
                 <SortTh k="doctor" sort={sort} onSort={sortBy}>แพทย์ผู้ตรวจ</SortTh>
-                <SortTh k="dx_text_list" sort={sort} onSort={sortBy}>รายละเอียด DiagText</SortTh>
                 <SortTh k="spclty" sort={sort} onSort={sortBy}>แผนก</SortTh>
                 <SortTh k="department" sort={sort} onSort={sortBy}>ห้องตรวจ</SortTh>
                 <SortTh k="pttype" sort={sort} onSort={sortBy}>สิทธิ</SortTh>
@@ -771,15 +768,6 @@ const PatientTr = memo(function PatientTr({ p, index, riskLoading, clinicalLoadi
       </td>
       <td>{p.pdx ? <span className="badge-pdx">{p.pdx}</span> : <span className="no-dx">–</span>}</td>
       <td className="small">{p.doctor || (namesShown ? '–' : <span className="no-dx">ซ่อนอยู่</span>)}</td>
-      <td className="dxtext">
-        {hasDxText(p) ? (
-          <small className="dxtext-clamp" title={p.dx_text_list}>
-            {p.dx_text_list}
-          </small>
-        ) : (
-          <span className="no-dx">–</span>
-        )}
-      </td>
       <td className="small">{p.spclty || '–'}</td>
       <td className="small">{p.department || '–'}</td>
       <td className="small">{p.pttype || '–'}</td>
@@ -790,7 +778,7 @@ const PatientTr = memo(function PatientTr({ p, index, riskLoading, clinicalLoadi
 function EmptyRow({ children, tone }: { children: ReactNode; tone?: 'error' }) {
   return (
     <tr className="ptable__empty">
-      <td colSpan={23} className={tone === 'error' ? 'is-error' : undefined}>
+      <td colSpan={22} className={tone === 'error' ? 'is-error' : undefined}>
         <span>{children}</span>
       </td>
     </tr>
