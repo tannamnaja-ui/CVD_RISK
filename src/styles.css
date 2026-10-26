@@ -4680,3 +4680,8 @@ p {
 .ptable th.ptable__sortable {
   padding: 0; /* the button inside carries the padding */
 }
+
+/* a heading broken only where the <br> is */
+.th-nowrap {
+  white-space: nowrap;
+}

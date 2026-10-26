@@ -401,7 +401,14 @@ export function PatientListPage() {
                 <SortTh k="sex" sort={sort} onSort={sortBy}>เพศ</SortTh>
                 <SortTh k="sbp" sort={sort} onSort={sortBy}>ความดัน</SortTh>
                 <SortTh k="risk" sort={sort} onSort={sortBy}>ปัจจัยเสี่ยง</SortTh>
-                <SortTh k="comorbid" sort={sort} onSort={sortBy}>โรคร่วม/ภาวะเสี่ยง</SortTh>
+                <SortTh k="comorbid" sort={sort} onSort={sortBy}>
+                  {/* exactly two lines, as wide as "ภาวะเสี่ยง" */}
+                  <span className="th-nowrap">
+                    โรคร่วม/
+                    <br />
+                    ภาวะเสี่ยง
+                  </span>
+                </SortTh>
                 <SortTh k="pdx" sort={sort} onSort={sortBy}>PDX</SortTh>
                 <SortTh k="doctor" sort={sort} onSort={sortBy}>แพทย์ผู้ตรวจ</SortTh>
                 <SortTh k="dx_text_list" sort={sort} onSort={sortBy}>รายละเอียด DiagText</SortTh>
